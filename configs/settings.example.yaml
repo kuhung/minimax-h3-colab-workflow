@@ -1,0 +1,15 @@
+# Global configuration for MiniMax H3 Colab Batch Runner
+
+comfyui:
+  server_url: "http://127.0.0.1:8188"
+  timeout_seconds: 900 # 15 minutes max per video
+
+paths:
+  workflow_template: "workflows/h3_t2v_pdd8_production.json"
+  prompts_file: "configs/prompts.example.json"
+  output_dir: "/content/drive/MyDrive/MiniMax_Outputs"
+  log_file: "/content/drive/MyDrive/MiniMax_Outputs/render_history.jsonl"
+
+production:
+  auto_shutdown_on_completion: false # set true if running overnight in Pro+
+  max_retries_per_shot: 1

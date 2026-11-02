@@ -1,0 +1,38 @@
+[
+  {
+    "id": "shot_01_coffee_macro",
+    "title": "咖啡机微距流速",
+    "prompt": "A close-up macro shot of dark roast espresso dripping slowly from a bottomless portafilter into a clear glass. Golden-brown crema forming on top with rich swirls. Soft ambient morning light from the side. Sound of rhythmic espresso drops falling into liquid, subtle steam hiss, quiet morning acoustic ambiance.",
+    "negative_prompt": "watermark, text, blur, low quality, deformed, jerky motion, noisy static",
+    "width": 960,
+    "height": 544,
+    "length": 121,
+    "steps": 8,
+    "cfg": 3.2,
+    "seed": 42
+  },
+  {
+    "id": "shot_02_server_datacenter",
+    "title": "数据中心矩阵光影",
+    "prompt": "Cinematic slow forward dolly tracking through an endless corridor of high-density AI server racks. Blue and amber LED activity lights flickering rhythmically. Volumetric cold mist cooling effects. Deep industrial hum of ventilation fans, intermittent electronic beep echoes in an enclosed server hall.",
+    "negative_prompt": "watermark, text, blur, low quality, deformed, shaky, glitchy",
+    "width": 1344,
+    "height": 768,
+    "length": 121,
+    "steps": 8,
+    "cfg": 3.0,
+    "seed": 108
+  },
+  {
+    "id": "shot_03_typing_hands",
+    "title": "极客机械键盘打字",
+    "prompt": "Side perspective close-up shot of anonymous hands typing rapidly on a custom mechanical keyboard with tactile switches. Dark desk mat with warm retro desk lamp lighting. In the background, soft bokeh of terminal text editor. Crisp mechanical switch clacks with satisfying acoustic resonance, subtle cloth rustle of sleeves.",
+    "negative_prompt": "watermark, text, deformed fingers, extra fingers, blur, low quality, noisy audio",
+    "width": 1344,
+    "height": 768,
+    "length": 121,
+    "steps": 8,
+    "cfg": 3.0,
+    "seed": 2048
+  }
+]

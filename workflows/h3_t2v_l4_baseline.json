@@ -1,0 +1,129 @@
+{
+  "3": {
+    "inputs": {
+      "seed": 42,
+      "steps": 20,
+      "cfg": 4.5,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0,
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler (Baseline 20-Steps)"
+    }
+  },
+  "1": {
+    "inputs": {
+      "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "MiniMax H3 Diffusion Model (Pruned Int8)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax_h3"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "MiniMax H3 Text Encoder (NVFP4)"
+    }
+  },
+  "4": {
+    "inputs": {
+      "vae_name": "minimax_h3_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "MiniMax H3 VAE (Audio-Visual)"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 960,
+      "height": 544,
+      "length": 121,
+      "batch_size": 1
+    },
+    "class_type": "EmptyH3LatentVideo",
+    "_meta": {
+      "title": "Empty H3 Latent (544p Fast Smoke Test)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": "A cinematic macro shot of a sleek espresso machine brewing rich coffee into a glass cup. Slow motion droplets forming. Ambient steam hissing, smooth mechanical pump humming, gentle liquid dripping acoustic sound.",
+      "clip": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive Prompt (Visual + Audio Scene)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "distorted audio, watermark, text, blur, low quality, deformed hands, jerky motion, noisy static",
+      "clip": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode (Audio + Video)"
+    }
+  },
+  "9": {
+    "inputs": {
+      "filename_prefix": "H3_Baseline",
+      "fps": 24,
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "SaveAnimatedWEBP",
+    "_meta": {
+      "title": "Save Video Output"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+# Python & OS
+__pycache__/
+*.py[cod]
+*$py.class
+.DS_Store
+.ipynb_checkpoints/
+*.log
+
+# Large media & model assets
+*.mp4
+*.webp
+*.wav
+*.safetensors
+*.bin
+*.pt
+
+# Local runs & clones
+outputs/
+models/
+ComfyUI/
+drive/
