@@ -1,0 +1,98 @@
+[
+  {
+    "id": "shot_01_datacenter_mist",
+    "title": "分镜1: 算力心脏与冷雾长廊 (建立世界观)",
+    "prompt": "Cinematic slow forward dolly tracking shot through an endless corridor of high-density AI server racks. Blue and amber LED activity lights flickering rhythmically in deep shadows. Volumetric cold mist and cryo-cooling vapor drifting through the floor grates. Deep industrial bass hum of heavy ventilation fans, faint rhythmic electronic beep echoes in a vast enclosed server hall.",
+    "negative_prompt": "watermark, text, blur, low quality, deformed, jerky motion, noisy static, oversaturated",
+    "width": 1344,
+    "height": 768,
+    "length": 124,
+    "steps": 8,
+    "cfg": 3.0,
+    "seed": 101
+  },
+  {
+    "id": "shot_02_mechanical_switch",
+    "title": "分镜2: 客制化机械键盘盲打 (第一人称沉浸)",
+    "prompt": "Side perspective close-up macro shot of anonymous slender hands typing rapidly on a custom mechanical keyboard with brass plate and tactile switches. Dark matte desk with warm 2700K retro desk lamp lighting. In the background, soft circular bokeh of a terminal text editor. Crisp rhythmic tactile mechanical switch clacks with solid acoustic resonance, subtle sleeve fabric rustling.",
+    "negative_prompt": "watermark, text, deformed fingers, extra fingers, blur, low quality, noisy audio, jerky",
+    "width": 1344,
+    "height": 768,
+    "length": 124,
+    "steps": 8,
+    "cfg": 3.0,
+    "seed": 202
+  },
+  {
+    "id": "shot_03_espresso_extraction",
+    "title": "分镜3: 无底手柄浓缩流速 (深夜仪式感)",
+    "prompt": "Extreme macro close-up shot of rich dark roast espresso extracting slowly from a stainless steel bottomless portafilter into a clear glass cup. Golden-brown crema swirling and expanding smoothly. Soft morning dawn light reflecting on glossy liquid. Rhythmic liquid drops falling into espresso with clear acoustic resonance, subtle steam hiss, warm quiet acoustic atmosphere.",
+    "negative_prompt": "watermark, text, blur, low quality, deformed, shaky, noisy static audio",
+    "width": 1344,
+    "height": 768,
+    "length": 124,
+    "steps": 8,
+    "cfg": 3.0,
+    "seed": 303
+  },
+  {
+    "id": "shot_04_screen_terminal_flow",
+    "title": "分镜4: 终端代码瀑布流与微光 (心流聚焦)",
+    "prompt": "Over-the-shoulder POV shot looking at a sleek matte ultra-wide monitor in a dark room. Lines of code and neural network loss curves compiling upwards rapidly with emerald syntax highlighting. Subtle blue ambient backlighting bouncing off dark walnut desk surface. Gentle steady hum of computer cooling fan, satisfying single heavy mechanical spacebar click.",
+    "negative_prompt": "watermark, text illegible blur, low quality, deformed hands, jerky camera",
+    "width": 1344,
+    "height": 768,
+    "length": 124,
+    "steps": 8,
+    "cfg": 3.0,
+    "seed": 404
+  },
+  {
+    "id": "shot_05_gpu_cooling_fins",
+    "title": "分镜5: 显卡铜管与冷凝气流 (工业美学)",
+    "prompt": "Macro tracking shot across copper heatpipes and dense black anodized aluminum cooling fins of an AI accelerator card. Faint condensation droplets glistening under cold spotlight. Axial fans slowly spinning up to high RPM. Subtle high-frequency whoosh of air moving through heatsink fins, faint delicate metal expansion ping.",
+    "negative_prompt": "watermark, text, blur, low quality, deformed geometry, shaky camera",
+    "width": 1344,
+    "height": 768,
+    "length": 124,
+    "steps": 8,
+    "cfg": 3.0,
+    "seed": 505
+  },
+  {
+    "id": "shot_06_coffee_steam_swirl",
+    "title": "分镜6: 咖啡升腾热气与夜雨 (情绪舒缓)",
+    "prompt": "Overhead high-angle slow-motion shot of a hot ceramic mug of black coffee sitting on a cork coaster. Delicate tendrils of white steam curling and rising gracefully into the dark air. Out of focus window in the background with raindrops trickling down glass and blurry city neon lights. Soft dull tap of mug setting down on coaster, distant muffled gentle rain tapping against glass.",
+    "negative_prompt": "watermark, text, blur, low quality, deformed, jerky motion",
+    "width": 1344,
+    "height": 768,
+    "length": 124,
+    "steps": 8,
+    "cfg": 3.0,
+    "seed": 606
+  },
+  {
+    "id": "shot_07_code_compile_success",
+    "title": "分镜7: 编译通过高亮与端杯 (攻坚胜利)",
+    "prompt": "Close-up perspective shot of terminal screen displaying bright green highlighted text '[BUILD SUCCESSFUL: 100%]'. An anonymous hand reaches into the frame from the side and smoothly picks up the coffee cup. Quiet late-night room ambiance, subtle soft electronic chime of task completion, delicate ceramic slide against wooden desk.",
+    "negative_prompt": "watermark, deformed fingers, extra fingers, blur, low quality, noisy audio",
+    "width": 1344,
+    "height": 768,
+    "length": 124,
+    "steps": 8,
+    "cfg": 3.0,
+    "seed": 707
+  },
+  {
+    "id": "shot_08_morning_dawn_break",
+    "title": "分镜8: 破晓晨光穿透百叶窗 (升华结局)",
+    "prompt": "Cinematic slow pan across a minimalist clean desk as bright golden sunrise rays pierce through horizontal window blinds. Golden light dust motes dancing in the air, illuminating a steaming cup and glowing monitor. Peaceful early morning ambient room tone, faint distant cheerful morning birdsong outside, gentle morning breeze rustling blinds.",
+    "negative_prompt": "watermark, text, blur, low quality, deformed, shaky camera, static noise",
+    "width": 1344,
+    "height": 768,
+    "length": 124,
+    "steps": 8,
+    "cfg": 3.0,
+    "seed": 808
+  }
+]

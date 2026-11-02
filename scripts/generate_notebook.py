@@ -14,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 wf_pdd8_content = (PROJECT_ROOT / "workflows" / "h3_t2v_pdd8_production.json").read_text(encoding="utf-8")
 wf_baseline_content = (PROJECT_ROOT / "workflows" / "h3_t2v_l4_baseline.json").read_text(encoding="utf-8")
 prompts_content = (PROJECT_ROOT / "configs" / "prompts.example.json").read_text(encoding="utf-8")
+story_content = (PROJECT_ROOT / "configs" / "story_cyber_dawn.json").read_text(encoding="utf-8")
 batch_runner_content = (PROJECT_ROOT / "scripts" / "batch_runner.py").read_text(encoding="utf-8")
 
 def make_cell(cell_type: str, content: str):
@@ -109,7 +110,7 @@ if not os.path.exists('/content/ComfyUI'):
     !git clone https://github.com/comfyanonymous/ComfyUI.git /content/ComfyUI
     %cd /content/ComfyUI
     !pip install -q -r requirements.txt
-    !pip install -q huggingface_hub accelerate safetensors
+    !pip install -q huggingface_hub accelerate safetensors av
     %cd /content
 
 # 2. 准备项目工作空间 (/content/minimax-h3-colab-workflow)
@@ -129,6 +130,7 @@ if not (REPO_DIR / "scripts" / "batch_runner.py").exists():
 embedded_wf_pdd8 = {repr(wf_pdd8_content)}
 embedded_wf_baseline = {repr(wf_baseline_content)}
 embedded_prompts = {repr(prompts_content)}
+embedded_story = {repr(story_content)}
 embedded_batch_runner = {repr(batch_runner_content)}
 
 if not (REPO_DIR / "workflows" / "h3_t2v_pdd8_production.json").exists():
@@ -142,6 +144,10 @@ if not (REPO_DIR / "workflows" / "h3_t2v_l4_baseline.json").exists():
 if not (REPO_DIR / "configs" / "prompts.example.json").exists():
     (REPO_DIR / "configs" / "prompts.example.json").write_text(embedded_prompts, encoding="utf-8")
     print("✅ 已自包含写入: configs/prompts.example.json")
+
+if not (REPO_DIR / "configs" / "story_cyber_dawn.json").exists():
+    (REPO_DIR / "configs" / "story_cyber_dawn.json").write_text(embedded_story, encoding="utf-8")
+    print("✅ 已自包含写入: configs/story_cyber_dawn.json")
 
 if not (REPO_DIR / "scripts" / "batch_runner.py").exists():
     (REPO_DIR / "scripts" / "batch_runner.py").write_text(embedded_batch_runner, encoding="utf-8")
@@ -472,9 +478,16 @@ if str(repo_path) not in sys.path:
 
 from scripts.batch_runner import run_batch
 
+# 默认排产: configs/story_cyber_dawn.json (完整 8 分镜短视频案例) 或 configs/prompts.example.json (测试集)
+prompts_file = repo_path / "configs" / "story_cyber_dawn.json"
+if not prompts_file.exists():
+    prompts_file = repo_path / "configs" / "prompts.example.json"
+
+print(f"🎬 准备启动批处理队列，使用排期文件: {prompts_file.name}")
+
 run_batch(
     workflow_path=str(repo_path / "workflows" / "h3_t2v_pdd8_production.json"),
-    prompts_path=str(repo_path / "configs" / "prompts.example.json"),
+    prompts_path=str(prompts_file),
     output_dir="/content/drive/MyDrive/MiniMax_Outputs",
     server_url="http://127.0.0.1:8188",
     comfy_output_dir="/content/ComfyUI/output",
