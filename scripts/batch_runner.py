@@ -172,6 +172,11 @@ def run_batch(
                 inputs["seed"] = seed
             elif class_type in ("SaveAnimatedWEBP", "VHS_VideoCombine"):
                 inputs["filename_prefix"] = f"{task_id}_{seed}"
+                if class_type == "SaveAnimatedWEBP":
+                    inputs.setdefault("fps", 24.0)
+                    inputs.setdefault("lossless", False)
+                    inputs.setdefault("quality", 85)
+                    inputs.setdefault("method", "default")
 
         # 提交至 ComfyUI
         t_start = time.time()

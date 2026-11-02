@@ -330,6 +330,11 @@ for node_id, node in wf.items():
         inputs["cfg"] = 3.0
     elif ctype in ("SaveAnimatedWEBP", "VHS_VideoCombine"):
         inputs["filename_prefix"] = f"{smoke_task_id}_{smoke_seed}"
+        if ctype == "SaveAnimatedWEBP":
+            inputs.setdefault("fps", 24.0)
+            inputs.setdefault("lossless", False)
+            inputs.setdefault("quality", 85)
+            inputs.setdefault("method", "default")
 
 print(f"🚀 提交冒烟测试任务至 ComfyUI API (960x544, {smoke_length} 帧, {smoke_steps} 步)...")
 t_start = time.time()
