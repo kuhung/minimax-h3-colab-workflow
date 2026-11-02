@@ -1,0 +1,184 @@
+{
+  "1": {
+    "inputs": {
+      "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "MiniMax H3 Diffusion Model (Pruned Int8)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "MiniMax H3 Text Encoder (NVFP4)"
+    }
+  },
+  "4": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "MiniMax H3 Video VAE"
+    }
+  },
+  "11": {
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "MiniMax H3 Audio VAE (32kHz Stereo)"
+    }
+  },
+  "10": {
+    "inputs": {
+      "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+      "strength_model": 1.0,
+      "model": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Turbo 8-Step LoRA"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 1344,
+      "height": 768,
+      "length": 124
+    },
+    "class_type": "EmptyMiniMaxH3LatentAV",
+    "_meta": {
+      "title": "Empty MiniMax H3 AV Latent"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": "Cinematic slow forward dolly tracking through an endless corridor of high-density AI server racks. Blue and amber LED activity lights flickering rhythmically. Volumetric cold mist cooling effects. Deep industrial hum of ventilation fans, intermittent electronic beep echoes in an enclosed server hall.",
+      "clip": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive Prompt (Visual + Camera + Audio)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "distorted audio, watermark, text, blur, low quality, deformed, jerky motion, noisy static, oversaturated",
+      "clip": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "3": {
+    "inputs": {
+      "seed": 1024,
+      "steps": 8,
+      "cfg": 3.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0,
+      "model": [
+        "10",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler (8-Step Turbo Production)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode Video"
+    }
+  },
+  "12": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeAudio",
+    "_meta": {
+      "title": "VAE Decode Audio (Native 32kHz Stereo)"
+    }
+  },
+  "13": {
+    "inputs": {
+      "images": [
+        "8",
+        0
+      ],
+      "audio": [
+        "12",
+        0
+      ],
+      "fps": 24.0
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "Create Video from Frames & Audio"
+    }
+  },
+  "9": {
+    "inputs": {
+      "video": [
+        "13",
+        0
+      ],
+      "filename_prefix": "H3_PDD8_Production",
+      "format": "mp4"
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "Save Production MP4 Video"
+    }
+  }
+}
