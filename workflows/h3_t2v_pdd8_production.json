@@ -12,7 +12,7 @@
   "2": {
     "inputs": {
       "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
-      "type": "minimax_h3"
+      "type": "minimax"
     },
     "class_type": "CLIPLoader",
     "_meta": {
@@ -21,16 +21,16 @@
   },
   "4": {
     "inputs": {
-      "vae_name": "minimax_h3_vae.safetensors"
+      "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
     },
     "class_type": "VAELoader",
     "_meta": {
-      "title": "MiniMax H3 VAE (Audio-Visual)"
+      "title": "MiniMax H3 Video VAE"
     }
   },
   "10": {
     "inputs": {
-      "lora_name": "minimax_h3_fl2va_pdd_8step_pruned_comfy.safetensors",
+      "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
       "strength_model": 1.0,
       "model": [
         "1",
@@ -39,19 +39,18 @@
     },
     "class_type": "LoraLoaderModelOnly",
     "_meta": {
-      "title": "PDD 8-Step Distillation LoRA"
+      "title": "Turbo 8-Step LoRA"
     }
   },
   "5": {
     "inputs": {
       "width": 1344,
       "height": 768,
-      "length": 121,
-      "batch_size": 1
+      "length": 124
     },
-    "class_type": "EmptyH3LatentVideo",
+    "class_type": "EmptyMiniMaxH3LatentAV",
     "_meta": {
-      "title": "Empty H3 Latent (768p High Fidelity)"
+      "title": "Empty MiniMax H3 AV Latent"
     }
   },
   "6": {

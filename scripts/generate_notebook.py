@@ -305,13 +305,13 @@ if not wf_path.exists():
 with open(wf_path, "r", encoding="utf-8") as f:
     wf = json.load(f)
 
-# 配置冒烟规格: 960x544, 61 帧, 8 步, seed 42
+# 配置冒烟规格: 960x544, 124 帧, 8 步, seed 42
 smoke_task_id = "benchmark_smoke_01"
 smoke_seed = 42
 smoke_steps = 8
 smoke_width = 960
 smoke_height = 544
-smoke_length = 61
+smoke_length = 124
 smoke_prompt = "A cinematic macro shot of an espresso machine brewing rich coffee into a glass cup. Slow motion droplets forming. Ambient steam hissing, smooth mechanical pump humming, gentle liquid dripping acoustic sound."
 
 for node_id, node in wf.items():
@@ -320,7 +320,7 @@ for node_id, node in wf.items():
     tmeta = node.get("_meta", {}).get("title", "")
     if ctype == "CLIPTextEncode" and (tmeta.startswith("Positive") or "Positive" in tmeta):
         inputs["text"] = smoke_prompt
-    elif ctype in ("EmptyH3LatentVideo", "EmptyLatentVideo"):
+    elif ctype in ("EmptyMiniMaxH3LatentAV", "EmptyH3LatentVideo", "EmptyLatentVideo"):
         inputs["width"] = smoke_width
         inputs["height"] = smoke_height
         inputs["length"] = smoke_length

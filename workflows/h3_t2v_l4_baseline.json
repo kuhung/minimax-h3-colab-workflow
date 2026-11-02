@@ -42,7 +42,7 @@
   "2": {
     "inputs": {
       "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
-      "type": "minimax_h3"
+      "type": "minimax"
     },
     "class_type": "CLIPLoader",
     "_meta": {
@@ -51,23 +51,22 @@
   },
   "4": {
     "inputs": {
-      "vae_name": "minimax_h3_vae.safetensors"
+      "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
     },
     "class_type": "VAELoader",
     "_meta": {
-      "title": "MiniMax H3 VAE (Audio-Visual)"
+      "title": "MiniMax H3 Video VAE"
     }
   },
   "5": {
     "inputs": {
       "width": 960,
       "height": 544,
-      "length": 121,
-      "batch_size": 1
+      "length": 124
     },
-    "class_type": "EmptyH3LatentVideo",
+    "class_type": "EmptyMiniMaxH3LatentAV",
     "_meta": {
-      "title": "Empty H3 Latent (544p Fast Smoke Test)"
+      "title": "Empty MiniMax H3 AV Latent"
     }
   },
   "6": {
