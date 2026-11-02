@@ -293,7 +293,7 @@ notebook = {
     "nbformat_minor": 0
 }
 
-output_path = Path("/Users/kuhung/.gemini/antigravity/scratch/minimax-h3-colab-workflow/notebooks/minimax_h3_l4_production.ipynb")
+output_path = Path("/Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/minimax_h3_l4_production.ipynb")
 output_path.parent.mkdir(parents=True, exist_ok=True)
 with open(output_path, "w", encoding="utf-8") as f:
     json.dump(notebook, f, indent=2, ensure_ascii=False)

@@ -24,15 +24,15 @@ flowchart TD
 
 ## 📁 仓库目录结构
 
-- 📓 [notebooks/minimax_h3_l4_production.ipynb](file:///Users/kuhung/.gemini/antigravity/scratch/minimax-h3-colab-workflow/notebooks/minimax_h3_l4_production.ipynb) — **Colab 核心交互笔记本**（集成门禁、模型挂载、WebUI 隧道与批量渲染）。
-- ⚙️ [scripts/check_gpu.py](file:///Users/kuhung/.gemini/antigravity/scratch/minimax-h3-colab-workflow/scripts/check_gpu.py) — **硬件环境门禁脚本**（严格校验计算能力 ≥ 8.0、显存与磁盘）。
-- 📦 [scripts/download_models.py](file:///Users/kuhung/.gemini/antigravity/scratch/minimax-h3-colab-workflow/scripts/download_models.py) — **权重断点与 Drive 缓存管理**（只拉取 40GB 剪枝最小集，支持二次启动 0 秒软链接）。
-- 🎬 [scripts/batch_runner.py](file:///Users/kuhung/.gemini/antigravity/scratch/minimax-h3-colab-workflow/scripts/batch_runner.py) — **无头批量队列渲染器**（直连本地 8188 接口，批量出片并自动写 Drive 与日志）。
-- 🧩 [workflows/h3_t2v_l4_baseline.json](file:///Users/kuhung/.gemini/antigravity/scratch/minimax-h3-colab-workflow/workflows/h3_t2v_l4_baseline.json) — ComfyUI 544p 快速冒烟基线工作流。
-- 🧩 [workflows/h3_t2v_pdd8_production.json](file:///Users/kuhung/.gemini/antigravity/scratch/minimax-h3-colab-workflow/workflows/h3_t2v_pdd8_production.json) — ComfyUI 768p PDD 8步高画质出片工作流。
-- 📋 [configs/prompts.example.json](file:///Users/kuhung/.gemini/antigravity/scratch/minimax-h3-colab-workflow/configs/prompts.example.json) — 无脸视频排期任务模板清单。
-- 📖 [docs/PROMPT_RECIPES.md](file:///Users/kuhung/.gemini/antigravity/scratch/minimax-h3-colab-workflow/docs/PROMPT_RECIPES.md) — H3 音画同出提示词结构公式与无脸镜头配方库。
-- 📚 [docs/RESEARCH_SUMMARY.md](file:///Users/kuhung/.gemini/antigravity/scratch/minimax-h3-colab-workflow/docs/RESEARCH_SUMMARY.md) — 前期全网调研核查报告归档。
+- 📓 [notebooks/minimax_h3_l4_production.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/minimax_h3_l4_production.ipynb) — **Colab 核心交互笔记本**（集成门禁、模型挂载、WebUI 隧道与批量渲染）。
+- ⚙️ [scripts/check_gpu.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/check_gpu.py) — **硬件环境门禁脚本**（严格校验计算能力 ≥ 8.0、显存与磁盘）。
+- 📦 [scripts/download_models.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/download_models.py) — **权重断点与 Drive 缓存管理**（只拉取 40GB 剪枝最小集，支持二次启动 0 秒软链接）。
+- 🎬 [scripts/batch_runner.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/batch_runner.py) — **无头批量队列渲染器**（直连本地 8188 接口，批量出片并自动写 Drive 与日志）。
+- 🧩 [workflows/h3_t2v_l4_baseline.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/workflows/h3_t2v_l4_baseline.json) — ComfyUI 544p 快速冒烟基线工作流。
+- 🧩 [workflows/h3_t2v_pdd8_production.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/workflows/h3_t2v_pdd8_production.json) — ComfyUI 768p PDD 8步高画质出片工作流。
+- 📋 [configs/prompts.example.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/prompts.example.json) — 无脸视频排期任务模板清单。
+- 📖 [docs/PROMPT_RECIPES.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/PROMPT_RECIPES.md) — H3 音画同出提示词结构公式与无脸镜头配方库。
+- 📚 [docs/RESEARCH_SUMMARY.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/RESEARCH_SUMMARY.md) — 前期全网调研核查报告归档。
 
 ---
 
@@ -52,7 +52,7 @@ flowchart TD
 ## 🚀 极速起步 SOP
 
 ### 第一步：打开笔记本与挂载
-1. 将 [minimax_h3_l4_production.ipynb](file:///Users/kuhung/.gemini/antigravity/scratch/minimax-h3-colab-workflow/notebooks/minimax_h3_l4_production.ipynb) 上传或导入至 Google Colab。
+1. 将 [minimax_h3_l4_production.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/minimax_h3_l4_production.ipynb) 上传或导入至 Google Colab。
 2. 运行时配置：**GPU -> L4 (高内存)**。
 3. 顺序执行单元格 1（挂载 Google Drive）与单元格 2（硬件门禁检测）。
 
@@ -64,7 +64,7 @@ flowchart TD
 2. 执行单元格 5 启动 ComfyUI，并获取 Cloudflare 网页管理端（可选，用于可视化微调节点）。
 
 ### 第三步：无头批处理生产（批量出片）
-1. 在 [configs/prompts.example.json](file:///Users/kuhung/.gemini/antigravity/scratch/minimax-h3-colab-workflow/configs/prompts.example.json) 中填入无脸视频镜头脚本。
+1. 在 [configs/prompts.example.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/prompts.example.json) 中填入无脸视频镜头脚本。
 2. 执行批处理单元格或在终端运行：
    ```bash
    python scripts/batch_runner.py \
