@@ -180,10 +180,12 @@ def run_agent_workflow(
     drive_cache: str = "/content/drive/MyDrive/MiniMax_Models",
     auto_shutdown: bool = False,
     watchdog_hours: float = 2.0,
-    timeout_per_shot: int = 900
+    timeout_per_shot: int = 900,
+    variant: str = "auto",
+    turbo_steps: int = 8,
 ):
     print("=" * 65)
-    print("🤖 MiniMax H3 Agent 自动化托管作业启动 (Colab MCP / Headless)")
+    print("🤖 MiniMax H3 Agent 自动化托管作业启动 (Colab MCP / Headless 2.0)")
     print("=" * 65)
 
     if watchdog_hours > 0:
@@ -203,7 +205,12 @@ def run_agent_workflow(
         # 2. 安装与挂载
         print("\n[阶段 2/5] 准备 ComfyUI 环境与模型权重...")
         ensure_comfyui_installed(comfy_path)
-        download_or_link(comfy_path, drive_cache_path)
+        download_or_link(
+            comfy_path,
+            drive_cache_path,
+            variant=variant,
+            turbo_steps=turbo_steps
+        )
 
         # 3. 启动守护进程
         print("\n[阶段 3/5] 检查与启动 ComfyUI 后台服务...")
@@ -254,6 +261,8 @@ if __name__ == "__main__":
     parser.add_argument("--auto-shutdown", action="store_true", help="Automatically unassign Colab runtime after batch finishes")
     parser.add_argument("--watchdog-hours", type=float, default=2.0, help="Hard watchdog timeout limit in hours (default: 2.0h)")
     parser.add_argument("--timeout-per-shot", type=int, default=900, help="Per-shot generation timeout in seconds")
+    parser.add_argument("--variant", type=str, default="auto", choices=["auto", "int8_convrot", "fp8_scaled"], help="Quantization variant")
+    parser.add_argument("--turbo-steps", type=int, default=8, choices=[4, 8], help="Turbo LoRA step variant (4 or 8)")
     args = parser.parse_args()
 
     run_agent_workflow(
@@ -264,5 +273,7 @@ if __name__ == "__main__":
         drive_cache=args.drive_cache,
         auto_shutdown=args.auto_shutdown,
         watchdog_hours=args.watchdog_hours,
-        timeout_per_shot=args.timeout_per_shot
+        timeout_per_shot=args.timeout_per_shot,
+        variant=args.variant,
+        turbo_steps=args.turbo_steps,
     )

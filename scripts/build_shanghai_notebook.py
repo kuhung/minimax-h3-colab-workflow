@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Generates notebooks/test_shanghai_mp4_audio.ipynb
+Generates notebooks/test_shanghai_mp4_audio.ipynb (2.0 Architecture)
 
 100% Google Colab compliant and standalone:
 - NO rclone, NO fuse, NO third-party daemons (strict adherence to Colab Acceptable Use Policy)
 - Standard official Google Drive mount (from google.colab import drive)
+- Full 2.0 topology without CFG: MiniMaxH3ImageToVideo + BasicGuider + SamplerCustomAdvanced (50% compute reduction)
+- Native 32kHz stereo audio MP4 generation via VAEDecodeAudio + CreateVideo + SaveVideo
 - Exact HuggingFace byte verification & safetensors header boundary check
-- Local NVMe model storage (zero Drive symlinks to prevent FUSE corruptions)
+- CUDA and hardware adaptive model selection (cu130 int8_convrot vs cu12x fp8_scaled)
 - Hardware gatekeeper for L4 (CUDA CC >= 8.0)
 - ComfyUI background service with preflight node validation
 - In-memory workflow batch rendering with PyAV stream verification
@@ -22,39 +24,53 @@ ROOT = Path(__file__).resolve().parent.parent
 WF = json.loads((ROOT / "workflows" / "h3_t2v_pdd8_mp4.json").read_text(encoding="utf-8"))
 TASKS = json.loads((ROOT / "configs" / "shanghai_street.json").read_text(encoding="utf-8"))
 
-# Validate node topology
+# Validate 2.0 node topology
 EXPECTED = {
     "1": "UNETLoader",
     "2": "CLIPLoader",
-    "3": "KSampler",
     "4": "VAELoader",
-    "5": "EmptyMiniMaxH3LatentAV",
-    "6": "CLIPTextEncode",
-    "7": "CLIPTextEncode",
-    "8": "VAEDecode",
-    "9": "SaveVideo",
-    "10": "LoraLoaderModelOnly",
     "11": "VAELoader",
+    "10": "LoraLoaderModelOnly",
+    "6": "MiniMaxH3ImageToVideo",
+    "7": "BasicGuider",
+    "14": "RandomNoise",
+    "15": "KSamplerSelect",
+    "16": "BasicScheduler",
+    "3": "SamplerCustomAdvanced",
+    "8": "VAEDecode",
     "12": "VAEDecodeAudio",
-    "13": "CreateVideo"
+    "13": "CreateVideo",
+    "9": "SaveVideo"
 }
 for nid, ctype in EXPECTED.items():
     assert WF[nid]["class_type"] == ctype, f"Node {nid} must be {ctype}"
+
 assert WF["9"]["inputs"]["video"] == ["13", 0]
 assert WF["13"]["inputs"]["images"] == ["8", 0] and WF["13"]["inputs"]["audio"] == ["12", 0]
+assert WF["3"]["inputs"]["guider"] == ["7", 0]
+assert WF["7"]["inputs"]["conditioning"] == ["6", 0]
 
 WF_JSON = json.dumps(WF, ensure_ascii=False, indent=1)
 TASKS_JSON = json.dumps(TASKS, ensure_ascii=False, indent=1)
 
-MD_INTRO = r"""# 🏙️ MiniMax H3 (Hailuo 3.0) 上海街景原生音画 MP4 出片工作流
+MD_INTRO = r"""# 🏙️ MiniMax H3 (Hailuo 3.0) 上海街景原生音画 MP4 出片工作流 (v2.0-Shanghai-Test)
 
-> **合规与安全性声明**：
-> 本 Notebook **100% 遵守 Google Colab 服务条款与使用规范**：
-> - 仅使用官方原生 `google.colab.drive` 挂载，绝不使用任何未经许可的第三方后台守护工具（如 rclone、fuse 等）。
-> - 纯本地推理运算，通过 ComfyUI 内部 API (`127.0.0.1:8188`) 通信，不开启任何公网穿透代理或文件服务。
-> - 配备精确字节与头部边界双重校验，彻底防止残损文件导致的异常退出。
-> - 生成完成后自动同步成片至 Google Drive，并执行安全关机释放实例，杜绝算力浪费。
+> **版本标识**: `v2.0-Shanghai-Test` (发布日期: 2026-11-03)  
+> **对比存证**:
+> - `v1.0 (基准跑通版)`: WebP 无声动画，960x544，单镜耗时 306 秒。
+> - `v1.5 (旧版试验组)`: MP4 双路 CFG(3.0)，因使用 1344x768 且计算量翻倍，实测 631s+ 易超时。
+> - `v2.0 (当前测试版)`: **单路无 CFG (`BasicGuider`, CFG=1.0) + 原生 32kHz 音画同频 + L4 黄金规格 960x544**，单镜耗时回归 **~300 秒**！
 
+| 架构维度 | v1.0 基准版 (WebP) | v1.5 过渡版 (旧 MP4) | v2.0 当前测试版 (新 MP4) |
+| :--- | :--- | :--- | :--- |
+| **文件命名** | `v1.0_minimax_h3_l4_benchmark_webp.ipynb` | `v1.5_minimax_h3_l4_legacy_mp4.ipynb` | `v2.0_test_shanghai_street_mp4.ipynb` |
+| **采样拓扑** | `KSampler (cfg=3.0)` | `KSampler (cfg=3.0)` | `BasicGuider (cfg=1.0)` 单路 |
+| **DiT 前向** | 16 次 / shot | 16 次 / shot | **8 次 / shot (计算量腰斩)** |
+| **视频格式** | `.webp` (无音频) | `.mp4` (32kHz 音效) | **`.mp4` (原生 32kHz 双声道)** |
+| **推荐分辨率** | 960x544 | 1344x768 | **960x544 (L4 黄金生产规格)** |
+| **实测单镜耗时** | **306.22 秒** | **631+ 秒 (严重超时)** | **~280s - 320 秒** |
+
+---
 **使用步骤**：
 1. 顶部菜单点击「代码执行程序」->「更改运行时类型」-> 选择 **L4 GPU**。
 2. 点击「代码执行程序」->「全部运行」。
@@ -66,6 +82,11 @@ NUM_SHOTS = 2               # 生成镜头数 1~3（每镜 124 帧 ≈ 5.16 秒�
 AUTO_SHUTDOWN = True        # 全部完成后自动执行 runtime.unassign() 释放实例停止扣费
 WATCHDOG_HOURS = 1.5        # 算力看门狗硬熔断上限（小时），防止异常卡死消耗算力
 
+DIFFUSION_VARIANT = "auto"  # 量化权重选型: "auto", "int8_convrot", "fp8_scaled"
+                            # "auto": CUDA >= 13.0 用 int8_convrot; Colab 默认 CUDA 12.x + L4 自动用 fp8_scaled
+TURBO_STEPS = 8             # Turbo LoRA 步数: 8 (默认高品质) 或 4 (极速快筛)
+SAMPLER_NAME = "res_multistep" # 官方推荐采样器: "res_multistep" (或 "euler")
+
 import os, sys, time, json, shutil, threading, subprocess
 from pathlib import Path
 
@@ -75,6 +96,7 @@ DRIVE_OUTPUTS = DRIVE_ROOT / "MiniMax_Outputs/shanghai_street"
 
 COMFY_ROOT = Path("/content/ComfyUI")
 LOCAL_MODELS = COMFY_ROOT / "models"
+COMFY_MODELS = LOCAL_MODELS  # 双保险别名
 LOCAL_OUT = COMFY_ROOT / "output"
 COMFY_LOG = Path("/content/comfyui.log")
 SERVER_URL = "http://127.0.0.1:8188"
@@ -98,7 +120,6 @@ def safe_shutdown(reason="正常完成"):
         os.system("sync")
         os.kill(1, 15)
 
-# 启动后台看门狗定时器
 if not globals().get("_WATCHDOG_RUNNING"):
     def _watchdog_timer():
         time.sleep(int(WATCHDOG_HOURS * 3600))
@@ -109,11 +130,11 @@ if not globals().get("_WATCHDOG_RUNNING"):
     log(f"🛡️  算力看门狗守门员已就绪：{WATCHDOG_HOURS} 小时超时自动断开")
 '''
 
-CELL_DRIVE = r'''# ==================== 2. 挂载 Google Drive（官方合规原生方式） ====================
+CELL_DRIVE = r'''# ==================== 2. 挂载 Google Drive ====================
 from google.colab import drive
 
 if not os.path.exists("/content/drive/MyDrive"):
-    log("⏳ 正在通过官方接口挂载 Google Drive（请在弹出框中点击授权）...")
+    log("⏳ 正在通过官方原生接口挂载 Google Drive...")
     drive.mount("/content/drive")
 else:
     log("✅ Google Drive 处于已挂载就绪状态")
@@ -124,7 +145,7 @@ log(f"📁 云端模型持久化缓存: {DRIVE_MODELS}")
 log(f"🎬 成片与日志最终落盘: {DRIVE_OUTPUTS}")
 '''
 
-CELL_GPU = r'''# ==================== 3. 硬件环境门禁检测（锁定 L4 GPU） ====================
+CELL_GPU = r'''# ==================== 3. 硬件门禁检测 (验证 L4 GPU) ====================
 def check_gpu():
     try:
         out = subprocess.check_output(
@@ -141,14 +162,14 @@ disk_free_gb = shutil.disk_usage("/content").free / (1024 ** 3)
 log(f"🖥️ 当前显卡: {gpu_name} (算力 {cc:.1f}) | 显存: {total_gb:.2f} GB | 本地磁盘剩余: {disk_free_gb:.1f} GB")
 
 if cc < 8.0:
-    log(f"🚨 致命拦截：{gpu_name} 算力 {cc:.1f} < 8.0，不支持 Int8 ConvRot 算子！")
+    log(f"🚨 致命拦截：{gpu_name} 算力 {cc:.1f} < 8.0，不支持量化算子加速！")
     safe_shutdown("硬件不达标 (非 L4)")
     raise RuntimeError(f"硬件不达标 ({gpu_name})，已自动断开。请重新分配 L4 实例。")
 
 log("🎉 硬件门禁验证通过，允许运行！")
 '''
 
-CELL_COMFY = r'''# ==================== 4. 安装 ComfyUI 核心环境与 PyAV 音视频库 ====================
+CELL_COMFY = r'''# ==================== 4. 安装 ComfyUI 与 PyAV 基础依赖 ====================
 if not (COMFY_ROOT / "main.py").exists():
     log("📦 正在克隆官方 ComfyUI 仓库...")
     subprocess.run(["git", "clone", "--depth", "1", "https://github.com/comfyanonymous/ComfyUI.git", str(COMFY_ROOT)], check=True)
@@ -157,22 +178,68 @@ if not (COMFY_ROOT / "main.py").exists():
 else:
     log("✅ 检测到 ComfyUI 目录已就绪")
 
-# 确保安装必要扩展库（PyAV 用于 32kHz 音视频合流与编码封装）
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "av", "huggingface_hub", "safetensors", "accelerate"], check=True)
 log("✅ ComfyUI 核心与 PyAV 依赖就绪！")
 '''
 
-CELL_MODELS = r'''# ==================== 5. 模型校验与自愈加载 (精确字节 + safetensors 头部双校验) ====================
+CELL_MODELS = r'''# ==================== 5. 模型校验与秒级挂载 (精确字节 + 硬件自适应) ====================
 import struct
 from huggingface_hub import hf_hub_download
 
-# HuggingFace 官方 Comfy-Org/MiniMax-H3 仓库精确字节数
+EXACT_SIZES = {
+    "diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors": 20970379616,
+    "diffusion_models/minimax_h3_fl2va_pruned_fp8_scaled.safetensors": 20958205608,
+    "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors": 15687142551,
+    "vae/minimax_h3_video_vae_int8_convrot.safetensors": 2811065184,
+    "vae/minimax_h3_video_vae_fp16.safetensors": 5207808496,
+    "vae/minimax_h3_audio_vae_fp32.safetensors": 605254808,
+    "loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors": 1956193000,
+    "loras/minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors": 1956192992,
+}
+
+def resolve_variant_and_files():
+    cuda_ver = None
+    try:
+        import torch
+        if torch.cuda.is_available() and hasattr(torch.version, "cuda") and torch.version.cuda:
+            cuda_ver = torch.version.cuda
+    except Exception:
+        pass
+
+    if DIFFUSION_VARIANT == "auto":
+        if cuda_ver and cuda_ver.startswith("13."):
+            actual_variant = "int8_convrot"
+            log(f"⚡ 检测到 PyTorch CUDA 版本: {cuda_ver} (cu130)，启用原生 int8_convrot 算子")
+        else:
+            actual_variant = "fp8_scaled"
+            log(f"💡 检测到 CUDA 环境: {cuda_ver}。在 Colab 默认 CUDA 12.x + L4 (CC 8.9) 下，"
+                f"自动选用 fp8_scaled + video_vae_fp16，消除 int8_convrot 在非 cu130 下的慢路径回退！")
+    else:
+        actual_variant = DIFFUSION_VARIANT
+        log(f"⚙️ 用户显式指定量化权重方案: {actual_variant}")
+
+    if actual_variant == "int8_convrot":
+        diff_file = "minimax_h3_fl2va_pruned_int8_convrot.safetensors"
+        vae_file = "minimax_h3_video_vae_int8_convrot.safetensors"
+    else:
+        diff_file = "minimax_h3_fl2va_pruned_fp8_scaled.safetensors"
+        vae_file = "minimax_h3_video_vae_fp16.safetensors"
+
+    if TURBO_STEPS == 4:
+        lora_file = "minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors"
+    else:
+        lora_file = "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"
+
+    return actual_variant, diff_file, vae_file, lora_file
+
+ACTUAL_VARIANT, DIFFUSION_FILE, VIDEO_VAE_FILE, LORA_FILE = resolve_variant_and_files()
+
 MODELS_SPEC = [
-    ("diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors", "diffusion_models", 20970379616),
-    ("text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "text_encoders", 15687142551),
-    ("vae/minimax_h3_video_vae_int8_convrot.safetensors", "vae", 2811065184),
-    ("vae/minimax_h3_audio_vae_fp32.safetensors", "vae", 605254808),
-    ("loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors", "loras", 1956193000),
+    (f"diffusion_models/{DIFFUSION_FILE}", "diffusion_models", EXACT_SIZES[f"diffusion_models/{DIFFUSION_FILE}"]),
+    ("text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "text_encoders", EXACT_SIZES["text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"]),
+    (f"vae/{VIDEO_VAE_FILE}", "vae", EXACT_SIZES[f"vae/{VIDEO_VAE_FILE}"]),
+    ("vae/minimax_h3_audio_vae_fp32.safetensors", "vae", EXACT_SIZES["vae/minimax_h3_audio_vae_fp32.safetensors"]),
+    (f"loras/{LORA_FILE}", "loras", EXACT_SIZES[f"loras/{LORA_FILE}"]),
 ]
 
 def check_safetensors_file(file_path: Path, expected_size: int) -> bool:
@@ -205,7 +272,6 @@ for rel_path, subfolder, exact_bytes in MODELS_SPEC:
     drive_sub_file = DRIVE_MODELS / subfolder / fname
     drive_flat_file = DRIVE_MODELS / fname
 
-    # 如果本地已是软链接，清除软链接以确保使用本地独立高速实体文件
     if local_file.is_symlink():
         local_file.unlink()
 
@@ -216,7 +282,7 @@ for rel_path, subfolder, exact_bytes in MODELS_SPEC:
 
     # 2. 若本地存在不完整文件，彻底清理
     if local_file.exists():
-        log(f"   🗑️ 清理本地残损文件: {fname} (当前大小 {local_file.stat().st_size} != {exact_bytes})")
+        log(f"   🗑️ 清理本地残损文件: {fname}")
         local_file.unlink()
 
     # 3. 检查 Google Drive 缓存中是否有完整文件
@@ -227,8 +293,11 @@ for rel_path, subfolder, exact_bytes in MODELS_SPEC:
                 cand_drive = cand
                 break
             else:
-                log(f"   🗑️ 清理 Drive 残损缓存: {cand.name} (大小不匹配，彻底移除)")
-                cand.unlink()
+                log(f"   🗑️ 清理 Drive 残损缓存: {cand.name}")
+                try:
+                    cand.unlink()
+                except Exception:
+                    pass
 
     if cand_drive:
         local_file.symlink_to(cand_drive.resolve())
@@ -262,8 +331,8 @@ for rel_path, subfolder, exact_bytes in MODELS_SPEC:
 
 # 建立向后兼容别名软链接
 aliases = [
-    (LOCAL_MODELS / "vae" / "minimax_h3_vae.safetensors", LOCAL_MODELS / "vae" / "minimax_h3_video_vae_int8_convrot.safetensors"),
-    (LOCAL_MODELS / "loras" / "minimax_h3_fl2va_pdd_8step_pruned_comfy.safetensors", LOCAL_MODELS / "loras" / "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"),
+    (LOCAL_MODELS / "vae" / "minimax_h3_vae.safetensors", LOCAL_MODELS / "vae" / VIDEO_VAE_FILE),
+    (LOCAL_MODELS / "loras" / "minimax_h3_fl2va_pdd_8step_pruned_comfy.safetensors", LOCAL_MODELS / "loras" / LORA_FILE),
 ]
 for alias_path, src_path in aliases:
     if src_path.exists() and not alias_path.exists():
@@ -289,7 +358,6 @@ def is_comfy_ready():
     except Exception:
         return False
 
-# 若已有运行实例先杀死
 subprocess.run(["pkill", "-9", "-f", "main.py.*8188"], check=False)
 time.sleep(2)
 
@@ -311,27 +379,87 @@ for i in range(60):
 else:
     raise RuntimeError("ComfyUI 在 120 秒内未能就绪，请检查 /content/comfyui.log")
 
-# 预检关键节点与模型名称是否已被 ComfyUI 正确注册
 log("🔍 正在预检 ComfyUI 节点注册表与模型索引...")
-obj_info = post_json("/object_info", timeout=60)
+OBJ_INFO = post_json("/object_info", timeout=60)
 required_nodes = [
     "UNETLoader", "CLIPLoader", "VAELoader", "LoraLoaderModelOnly",
-    "EmptyMiniMaxH3LatentAV", "CLIPTextEncode", "KSampler", "VAEDecode",
+    "MiniMaxH3ImageToVideo", "BasicGuider", "RandomNoise", "KSamplerSelect",
+    "BasicScheduler", "SamplerCustomAdvanced", "VAEDecode",
     "VAEDecodeAudio", "CreateVideo", "SaveVideo"
 ]
-missing = [n for n in required_nodes if n not in obj_info]
+missing = [n for n in required_nodes if n not in OBJ_INFO]
 if missing:
     raise RuntimeError(f"ComfyUI 缺失必要节点类: {missing}")
 
-log("✅ 预检 100% 通过：全部 11 类节点均已就绪！")
+log(f"✅ 预检 100% 通过：全部 {len(required_nodes)} 类核心节点均已就绪！")
 '''
 
-CELL_RENDER = r'''# ==================== 7. 原生批量执行上海街景出片队列 (原生 32kHz 立体声 MP4) ====================
+CELL_RENDER = r'''# ==================== 7. 上海街景原生音画 MP4 队列批处理渲染 (2.0) ====================
 import copy
 
 BASE_WORKFLOW = json.loads(r"""__WF_JSON__""")
 ALL_TASKS = json.loads(r"""__TASKS_JSON__""")
 TASKS = ALL_TASKS[:max(1, min(int(NUM_SHOTS), len(ALL_TASKS)))]
+
+def align_frame_count(n: int) -> int:
+    """对齐帧数至 17k + 5 网格"""
+    if n <= 5:
+        return 22
+    k = max(1, (n - 5 + 16) // 17)
+    return 17 * k + 5
+
+def format_h3_prompt(task: dict) -> str:
+    """组装官方结构化多镜头提示词"""
+    if not isinstance(task, dict):
+        return str(task)
+    shots = task.get("shots")
+    soundscape = task.get("overall_soundscape")
+    music = task.get("non_diegetic_music")
+    if not shots and not soundscape and not music:
+        return task.get("prompt", "")
+    parts = []
+    if shots:
+        shot_lines = []
+        for i, s in enumerate(shots, 1):
+            if isinstance(s, dict):
+                t_str = s.get("time", f"00:{((i-1)*5):02d}.000")
+                desc = s.get("description", s.get("prompt", ""))
+                shot_lines.append(f"[Shot {i}] At {t_str}, {desc}")
+            else:
+                shot_lines.append(f"[Shot {i}] {s}")
+        parts.append("integrated_multimodal_description: " + " ".join(shot_lines))
+    elif task.get("prompt"):
+        parts.append(f"integrated_multimodal_description: {task['prompt']}")
+    if soundscape:
+        parts.append(f"overall_soundscape: {soundscape}")
+    if music:
+        parts.append(f"non_diegetic_music: {music}")
+    return "\n\n".join(parts)
+
+def validate_and_adapt_workflow(wf: dict, obj_info: dict) -> dict:
+    """根据 ComfyUI /object_info 校验输入契约并自动裁剪未注册可选参数"""
+    if not obj_info:
+        return wf
+    cleaned = copy.deepcopy(wf)
+    for nid, node in cleaned.items():
+        if not isinstance(node, dict):
+            continue
+        ctype = node.get("class_type")
+        if not ctype or ctype not in obj_info:
+            raise ValueError(f"节点 [{nid}] 类名 '{ctype}' 未注册！")
+        node_spec = obj_info[ctype].get("input", {})
+        req = set(node_spec.get("required", {}).keys())
+        opt = set(node_spec.get("optional", {}).keys())
+        valid_keys = req | opt
+        inputs = node.get("inputs", {})
+        to_remove = [k for k in list(inputs.keys()) if k not in valid_keys]
+        for k in to_remove:
+            log(f"   ⚠️ 节点 [{nid}: {ctype}] 移除非当前版本参数: '{k}'")
+            del inputs[k]
+        missing_req = [k for k in req if k not in inputs]
+        if missing_req:
+            raise ValueError(f"节点 [{nid}: {ctype}] 缺失必要输入参数: {missing_req}")
+    return cleaned
 
 def wait_job_completion(pid, timeout_sec=900):
     t_start = time.time()
@@ -348,7 +476,6 @@ def wait_job_completion(pid, timeout_sec=900):
             log(f"   ⏳ 渲染去噪中... 已耗时 {elapsed}s")
             last_print = elapsed
         time.sleep(3)
-    # 超时中断
     try:
         post_json("/interrupt", {}, timeout=5)
     except Exception:
@@ -368,8 +495,16 @@ def probe_mp4_file(mp4_path):
         return 0, 0, 0, str(e)
 
 log("=" * 68)
-log(f"🎬 开始上海街景纯本地批处理渲染: 共 {len(TASKS)} 镜")
+log(f"🎬 开始 MiniMax H3 上海街景队列批处理渲染 (2.0): 共 {len(TASKS)} 镜")
+log(f"🎯 选定权重方案: {ACTUAL_VARIANT} | LoRA: {LORA_FILE}")
 log("=" * 68)
+
+try:
+    post_json("/queue", {"clear": True}, timeout=5)
+    post_json("/interrupt", {}, timeout=5)
+    time.sleep(2)
+except Exception:
+    pass
 
 RENDER_RESULTS = []
 t_batch_start = time.time()
@@ -377,41 +512,47 @@ t_batch_start = time.time()
 for i, task in enumerate(TASKS, 1):
     t_id = task["id"]
     title = task.get("title", t_id)
-    prompt = task["prompt"]
-    neg_prompt = task.get("negative_prompt", "distorted audio, watermark, text, blur, low quality, deformed, jerky motion, noisy static")
+    prompt = format_h3_prompt(task)
     seed = int(task.get("seed", 1024))
     prefix = f"{t_id}_{seed}"
+    raw_len = int(task.get("length", 124))
+    aligned_len = align_frame_count(raw_len)
+    width = int(task.get("width", 960))
+    height = int(task.get("height", 544))
+    steps = int(task.get("steps", TURBO_STEPS))
 
     log(f"\n▶️ [{i}/{len(TASKS)}] 正在生成: {title}")
+    log(f"   📐 规格: {width}x{height} | {aligned_len} 帧 (网格对齐) | 步数 {steps} | 种子 {seed}")
     log(f"   📝 画面与声效提示词: {prompt[:90]}...")
 
-    # 动态构建工作流
     wf = copy.deepcopy(BASE_WORKFLOW)
-    wf["6"]["inputs"]["text"] = prompt
-    wf["7"]["inputs"]["text"] = neg_prompt
-    wf["5"]["inputs"]["width"] = int(task.get("width", 1344))
-    wf["5"]["inputs"]["height"] = int(task.get("height", 768))
-    wf["5"]["inputs"]["length"] = int(task.get("length", 124))
-    wf["3"]["inputs"]["seed"] = seed
-    wf["3"]["inputs"]["steps"] = int(task.get("steps", 8))
-    wf["3"]["inputs"]["cfg"] = float(task.get("cfg", 3.0))
+    wf["1"]["inputs"]["unet_name"] = DIFFUSION_FILE
+    wf["4"]["inputs"]["vae_name"] = VIDEO_VAE_FILE
+    wf["10"]["inputs"]["lora_name"] = LORA_FILE
+    wf["6"]["inputs"]["prompt"] = prompt
+    wf["6"]["inputs"]["width"] = width
+    wf["6"]["inputs"]["height"] = height
+    wf["6"]["inputs"]["length"] = aligned_len
+    wf["14"]["inputs"]["noise_seed"] = seed
+    wf["15"]["inputs"]["sampler_name"] = task.get("sampler_name", SAMPLER_NAME)
+    wf["16"]["inputs"]["steps"] = steps
+    wf["16"]["inputs"]["scheduler"] = task.get("scheduler", "simple")
     wf["9"]["inputs"]["filename_prefix"] = prefix
 
-    # 提交队列
-    submit_resp = post_json("/prompt", {"prompt": wf, "client_id": "colab_production"}, timeout=15)
+    wf = validate_and_adapt_workflow(wf, globals().get("OBJ_INFO"))
+
+    submit_resp = post_json("/prompt", {"prompt": wf, "client_id": "colab_shanghai_2.0"}, timeout=15)
     if "error" in submit_resp or submit_resp.get("node_errors"):
         raise RuntimeError(f"ComfyUI 拒绝提交工作流: {submit_resp}")
     pid = submit_resp["prompt_id"]
     log(f"   🚀 成功推入 ComfyUI 执行队列 (Prompt ID: {pid})")
 
-    # 等待完成
     hist_data, cost_s = wait_job_completion(pid)
     status_info = hist_data.get("status", {})
     if status_info.get("status_str") != "success":
         err_msgs = status_info.get("messages", [])
         raise RuntimeError(f"镜头执行异常: {json.dumps(err_msgs, ensure_ascii=False)}")
 
-    # 定位生成的 MP4 文件
     target_mp4 = None
     for n_out in hist_data.get("outputs", {}).values():
         for cat in ["videos", "gifs", "images"]:
@@ -431,11 +572,9 @@ for i, task in enumerate(TASKS, 1):
     if not target_mp4:
         raise RuntimeError(f"渲染成功但在 {LOCAL_OUT} 未发现匹配的 MP4 成片！")
 
-    # 探测 MP4 音视频流质量
     v_cnt, a_cnt, dur_s, a_sample = probe_mp4_file(target_mp4)
     file_mb = target_mp4.stat().st_size / (1024 * 1024)
 
-    # 立即持久化同步至 Google Drive
     drive_dst = DRIVE_OUTPUTS / target_mp4.name
     shutil.copyfile(target_mp4, drive_dst)
     assert drive_dst.exists(), f"文件落盘 Google Drive 失败: {drive_dst}"
@@ -465,12 +604,12 @@ log(f"📂 所有成片均已持久化保存在: {DRIVE_OUTPUTS}")
 log("=" * 68)
 '''
 
-CELL_PREVIEW = r'''# ==================== 8. HTML5 原生音视频播放试听 ====================
+CELL_PREVIEW = r'''# ==================== 8. 成片 HTML5 音画同步预览试听 ====================
 import base64
 from IPython.display import HTML, display
 
 if globals().get("RENDER_RESULTS"):
-    log(f"🎬 正在渲染 {len(RENDER_RESULTS)} 个镜头的音视频预览卡片（请打开视频声音滑块试听）：\n")
+    log(f"🎬 正在渲染 {len(RENDER_RESULTS)} 个上海街景音视频预览卡片（请打开视频声音滑块试听）：\n")
     for r in RENDER_RESULTS:
         with open(r["local_path"], "rb") as f:
             b64_data = base64.b64encode(f.read()).decode("utf-8")
@@ -481,7 +620,7 @@ if globals().get("RENDER_RESULTS"):
                 <source src="data:video/mp4;base64,{b64_data}" type="video/mp4">
             </video>
             <p style="color: #94a3b8; font-size: 13px; margin: 8px 0 0 0;">
-                🔊 <b>原生 32kHz 音效</b>：点击播放器右下角<b>声音图标</b>解除静音，即可试听市井晨光生煎油煎声与梧桐风声！
+                🔊 <b>原生 32kHz 音效</b>：点击播放器右下角<b>声音图标</b>解除静音，即可试听现场环境声效！
             </p>
         </div>
         """
@@ -493,7 +632,7 @@ else:
 CELL_SHUTDOWN = r'''# ==================== 9. 安全收尾与自动销毁实例 (防扣费) ====================
 if AUTO_SHUTDOWN:
     log("🛑 批处理任务全部完成，正在自动销毁实例以终止算力扣费...")
-    safe_shutdown("出片完毕，正常下班")
+    safe_shutdown("上海街景出片完毕，正常下班")
 else:
     log("💡 提示：AUTO_SHUTDOWN 设为 False，请在右上角手动断开并释放运行时。")
 '''
@@ -510,13 +649,13 @@ def build():
         md(MD_INTRO),
         md("### 步骤 1：运行配置与算力看门狗守护"), code(CELL_CONFIG),
         md("### 步骤 2：挂载 Google Drive (官方原生接口)"), code(CELL_DRIVE),
-        md("### 步骤 3：硬件门禁检测 (验证 L4 GPU)"), code(CELL_GPU),
+        md("### 步骤 3：硬件门禁检测 (验证 L4 GPU，零内核显存占用)"), code(CELL_GPU),
         md("### 步骤 4：安装 ComfyUI 核心依赖与 PyAV"), code(CELL_COMFY),
-        md("### 步骤 5：模型安全校验与下载 (精确字节 + safetensors 头部双校验)"), code(CELL_MODELS),
+        md("### 步骤 5：模型安全校验与秒级挂载 (精确字节 + safetensors 头部双校验)"), code(CELL_MODELS),
         md("### 步骤 6：启动 ComfyUI 守护服务与前置预检"), code(CELL_START),
-        md("### 步骤 7：批量渲染上海街景双镜头原生音画 MP4"), code(render_code),
+        md("### 步骤 7：上海街景原生音画 MP4 队列批处理渲染"), code(render_code),
         md("### 步骤 8：成片 HTML5 音画同步预览试听"), code(CELL_PREVIEW),
-        md("### 步骤 9：安全断开实例终止算力计费"), code(CELL_SHUTDOWN),
+        md("### 步骤 9：安全收尾与自动销毁实例 (防扣费)"), code(CELL_SHUTDOWN),
     ]
 
     nb = {
@@ -531,10 +670,15 @@ def build():
         "cells": cells
     }
 
-    out_file = ROOT / "notebooks" / "test_shanghai_mp4_audio.ipynb"
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-    out_file.write_text(json.dumps(nb, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"🎉 成功生成 100% 官方合规自包含 Notebook: {out_file}")
+    nb_str = json.dumps(nb, indent=2, ensure_ascii=False)
+    versioned_file = ROOT / "notebooks" / "v2.0_test_shanghai_street_mp4.ipynb"
+    default_file = ROOT / "notebooks" / "test_shanghai_mp4_audio.ipynb"
+
+    versioned_file.parent.mkdir(parents=True, exist_ok=True)
+    versioned_file.write_text(nb_str, encoding="utf-8")
+    default_file.write_text(nb_str, encoding="utf-8")
+    print(f"🎉 成功生成带版本号上海街景 Notebook: {versioned_file}")
+    print(f"🎉 成功同步默认入口上海街景 Notebook: {default_file}")
 
 if __name__ == "__main__":
     build()

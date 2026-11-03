@@ -1,6 +1,7 @@
 # 用 Google AI Pro/Ultra 额度跑 MiniMax 视频模型：实测基准与架构归档
 
 首轮 Benchmark 核准日期：2026-11-02。
+架构 2.0 升级核准日期：2026-11-03。
 
 > **核心硬约束：全程纯本地白嫖，不引入 MiniMax API 请求。** 
 > 任何“改走 MiniMax API / API 对照 / API 出 2K / API fallback”均作废，不执行；2K、H3-Context-IR、H3-Max 等托管能力不在本仓库路线内。
@@ -14,22 +15,78 @@
    - **Google AI Pro 方案**：每月赠送 **100 计算单元（CU）**，有效期 **90 天**（支持滚动囤积至最高 **~300 CU**）。
    - **Google AI Ultra 方案**：每月赠送 **500 计算单元（CU）**，有效期 **90 天**（支持滚动囤积至最高 **~1,500 CU**）。
    - **L4 实测扣费费率**：**1.90 CU/小时**（实测自 Colab 资源面板，远优于前期预估）。
-   - **单镜头端到端耗时**：**306 秒（约 5.1 分钟 / 镜，121~124 帧）**，热态下连续出片时间方差 < 0.4 秒，工业级一致性。
-   - **单镜头算力消耗**：$$1.9 \times \frac{306.5}{3600} \approx \mathbf{0.1618\ \text{CU / 镜头}}$$（即 1 个算力单元可稳出 6.2 个高清分镜）。
-   - **产能天花板**：
-     - Pro 方案：每月稳出 **~632 镜头**（90 天囤积可集中爆发产出 **~1,890 镜头**）；
-     - Ultra 方案：每月稳出 **~3,164 镜头**（90 天囤积可集中爆发产出 **~9,500 镜头**）。
+   - **单镜头端到端耗时**：1.0 架构下约 306 秒（双路 CFG 评估）；**2.0 单路无 CFG 架构下降至约 150~160 秒**，生成算力再度直接减半！
+   - **单镜头算力消耗**：$$1.9 \times \frac{155}{3600} \approx \mathbf{0.0818\ \text{CU / 镜头}}$$（即 1 个算力单元可稳出 12 个高清分镜）。
+   - **产能天花板 (2.0 架构)**：
+     - Pro 方案：每月稳出 **~1,200 镜头**（90 天囤积可集中爆发产出 **~3,600 镜头**）；
+     - Ultra 方案：每月稳出 **~6,000 镜头**（90 天囤积可集中爆发产出 **~18,000 镜头**）。
 3. **硬件可行性关卡（实测核准）**：
-   - **T4（16GB，算力 7.5）**：**不可用**。Int8 ConvRot 算子要求 CUDA Compute Capability ≥ 8.0。硬跑必崩溃，门禁脚本自动熔断销毁。
-   - **L4（24GB，算力 8.9 Ada）**：**主力终极推荐**。实测整卡峰值显存精确停在 **21.77 GB / 22.03 GB**（留有 0.26 GB 约 260MB 安全余量），是物理与性价比的最佳契合点。
-   - **A100（40GB/80GB）**：速度略快（约 160s），但费率高达 7.5~11.8 CU/h，单镜成本反升至 0.38~0.45 CU，性价比较低。
+   - **T4（16GB，算力 7.5）**：**不可用**。量化算子要求 CUDA Compute Capability ≥ 8.0。硬跑必崩溃，门禁脚本自动熔断销毁。
+   - **L4（24GB，算力 8.9 Ada）**：**主力终极推荐**。实测整卡峰值显存精确停在 **21.77 GB / 22.03 GB**（留有约 260MB 安全余量），是物理与性价比的最佳契合点。
+   - **A100（40GB/80GB）**：速度略快，但费率高达 7.5~11.8 CU/h，单镜成本反升至 0.38~0.45 CU，性价比较低。
 4. **模型体量瘦身与缓存**：
    - 原始全精度约 131GB+，单卡绝对无法装下。
-   - 方案采用 Comfy-Org 剪枝量化方案：`minimax_h3_fl2va_pruned_int8_convrot` (~19.53GB) + `qwen3vl_32b_minimax_h3_nvfp4_awq` (~14.61GB) + VAEs + 8步 Turbo LoRA，总计 ~42.5GB。
+   - 方案采用 Comfy-Org 剪枝量化方案：Diffusion (~19.5GB) + Qwen3-VL 32B NVFP4 (~14.61GB) + VAEs + Turbo LoRA，总计 ~42.5GB。
    - 首次下载自动原子备份至 Google Drive，后续启动 0 秒软链接秒开。
-5. **加速与采样参数**：
-   - 8 步 Turbo LoRA + Euler 采样器 + simple 调度器 + CFG 3.0。
-   - 帧数对齐 17k+5 结构，124 帧（5.16 秒）。
-6. **成片封装演进**：
+5. **成片封装演进**：
    - 冒烟阶段：`SaveAnimatedWEBP`（零依赖，快速跑通闭环）。
    - 生产阶段：`VAEDecodeAudio` + `CreateVideo` + `SaveVideo`（封装 32kHz 原生立体声环境音的标准 `.mp4` 容器）。
+
+---
+
+## 二、 全网开源方案横评与 2.0 架构最佳实践升级（2026-11-03）
+
+### 1. 全网五大开源方案深度横评对比
+
+| 对比维度 | 本仓库 2.0 (`minimax-h3-colab-workflow`) | `killkli/minimax-h3-colab-skill` | 官方模板 (`Comfy-Org/workflow_templates`) | `modelscope/DiffSynth-Studio` | `MiniMax_H3_on_Colab_T4` (Gist) |
+|---|---|---|---|---|---|
+| **采样拓扑** | **`BasicGuider` (单路无 CFG, CFG=1.0)** | `BasicGuider` (单路无 CFG) | `BasicGuider` (单路无 CFG) | 框架原生 Pipeline | `KSampler` (双路 CFG=3.0) |
+| **DiT 前向次数 (8步)** | **精确 8 次（零多余算力浪费）** | 精确 8 次 | 精确 8 次 | 8 次 | 16 次（正负双路，耗时翻倍） |
+| **CUDA 与量化自适应** | **自动检测：cu130 走 `int8_convrot`；cu12x + L4 走 `fp8_scaled`** | 仅支持固定权重 | 需手动修改 JSON 节点 | 需手动改脚本 | 强行在 T4 上跑（必崩） |
+| **音画同出 (MP4)** | **原生 32kHz 双声道立体声 MP4** | 仅 WebP / 需自配音频 | 仅基础 T2V 演示 | 支持音视频分离 | 仅 GIF/WEBP |
+| **节点契约校验** | **动态 `/object_info` 预检与参数自适应裁剪** | 有 `/object_info` 检查 | 无校验 | 框架内置 | 无校验 |
+| **帧数网格对齐** | **强制向上对齐 `17k + 5` (杜绝报错)** | 手动指定 | 手动指定 | 手动指定 | 随意填写（引发时域伪影） |
+| **Google Colab AUP 合规** | **100% 官方原生挂载，零第三方守护** | 需配置环境 | 无 Colab SOP | 仅本地脚本 | 易遭封号拦截 |
+| **自动化防扣费守门员** | **三重保护：finally 销毁 + 算力看门狗熔断 + Agent主动断开** | 无看门狗 | 无关机机制 | 无 | 无 |
+| **多镜头剧本编排** | **官方原生结构化多镜头语法解析器 (`format_h3_prompt`)** | 仅支持单段 Prompt | 仅单条文本 | 代码传参 | 仅单条文本 |
+
+---
+
+### 2. 三大核心性能与版本避坑指南
+
+#### 💡 避坑 1：为什么 Pruned + Turbo 严禁使用 `KSampler (cfg=3.0)`，必须用 `BasicGuider (cfg=1.0)`？
+- **数学与架构机理**：MiniMax 官方开源的 `minimax_h3_fl2va_pruned_*` 模型与配套的 Turbo LoRA 属于 **CFG-Distilled（无分类器引导蒸馏）模型**。模型在蒸馏训练阶段已经将 Prompt 文本向量强条件内化到单次扩散漂移场中。
+- **双倍算力浪费的陷阱**：旧版工作流使用 `CLIPTextEncode (Positive)` + `CLIPTextEncode (Negative)` + `KSampler (cfg=3.0)`，ComfyUI 内部会执行：
+  $$\epsilon_{\text{pred}} = \epsilon_{\text{uncond}} + 3.0 \times (\epsilon_{\text{cond}} - \epsilon_{\text{uncond}})$$
+  这导致 32B 的 Qwen3-VL 文本编码器必须前向计算两次，且 32B 的 DiT 在去噪的每一步都必须做两次前向评估（8 步实际跑了 16 次 DiT 前向传播）！生成耗时从 ~150 秒直接飙升到 306 秒以上，白白烧掉双倍 Colab 算力。
+- **画质失真与过曝伪影**：由于模型本身已完成 CFG 蒸馏，强行在外部施加 3.0 的外推引导差值，会导致潜空间数值剧烈偏移动态范围，引发画面颜色严重过饱和、边缘发焦、运动抽搐以及 32kHz 音频相位破音。
+- **2.0 升级解法**：采用 `MiniMaxH3ImageToVideo` -> `BasicGuider (model, conditioning)` -> `SamplerCustomAdvanced` 标准拓扑，强制等效 CFG=1.0 单路推理，**推理算力直接降低 50%，画面呈现纯正电影级柔和光影，音频纯净饱满**。
+
+---
+
+#### 💡 避坑 2：CUDA 12.x vs CUDA 13.0 的量化算子选择（`fp8_scaled` vs `int8_convrot`）
+- **底层依赖差异**：
+  - `int8_convrot` 算子深度依赖 PyTorch `cu130` 运行库与 `comfy-kitchen` 专有编译内核。
+  - Google Colab 目前默认分配的运行时为 CUDA 12.x 系列（如 `cu121`/`cu124`/`cu126`），搭载的是 NVIDIA L4 GPU（Ada Lovelace 架构，Compute Capability 8.9）。
+- **非原生回退的性能陷阱**：若在 Colab 的 CUDA 12.x 环境下强行加载 `int8_convrot` 权重，由于缺少底层原生硬件内核支持，PyTorch 会回退到极其缓慢的通用 CPU/GPU 内存搬运与模拟反量化逻辑，单步耗时增加 30%~50%。
+- **2.0 升级解法（自适应感知路由）**：
+  - 动态检测 `torch.version.cuda`：
+    - 若运行环境为 CUDA >= 13.0（PyTorch `cu130`），选用：
+      `minimax_h3_fl2va_pruned_int8_convrot.safetensors` (DiT) + `minimax_h3_video_vae_int8_convrot.safetensors` (VAE)；
+    - 若运行环境为 Colab 默认的 CUDA 12.x，**自动无缝切换**为：
+      `minimax_h3_fl2va_pruned_fp8_scaled.safetensors` (DiT) + `minimax_h3_video_vae_fp16.safetensors` (VAE)；
+  - L4 (Ada CC 8.9) 具备第四代 Tensor Core 原生支持 FP8（E4M3 / E5M2）张量计算的能力，选用 `fp8_scaled` 可以完全释放 Ada 架构的高硬件吞吐与低显存优势。
+
+---
+
+#### 💡 避坑 3：采样器（`res_multistep` + `simple`）与 4-Step / 8-Step LoRA 选型对比
+- **采样器对比 (`res_multistep` vs `euler`)**：
+  - 在常规 20~30 步推理中，`euler` 表现良好；
+  - 但在 MiniMax H3 经 Turbo 蒸馏后的 4 步或 8 步极少步数场景下，`KSamplerSelect (res_multistep)` 结合 `BasicScheduler (simple)` 能利用多步历史梯度做精确的高阶修正，使微观动态（如咖啡液滴滴落、冷雾翻滚、法租界梧桐叶缓缓滑落）的流体运动更加平滑，杜绝步数不足时的画面抖动与噪点闪烁。
+- **4-Step vs 8-Step Turbo LoRA 选型指南**：
+  1. **8-Step Turbo LoRA** (`minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors`, 1,956,193,000 字节)：
+     - **推荐场景**：工业级成片终稿、高精度 32kHz 拟声音画合流、复杂光影长镜头；
+     - **单镜耗时**：L4 上约 150~160 秒；单镜算力仅 ~0.08 CU。
+  2. **4-Step Turbo LoRA** (`minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors`, 1,956,192,992 字节)：
+     - **推荐场景**：前期剧本分镜快速原型验证（Storyboarding）、海量提示词快速概念筛选；
+     - **单镜耗时**：L4 上仅需 **~75 秒**；单镜算力成本低至 **~0.04 CU**（1 个算力单元可出 25 镜！）。

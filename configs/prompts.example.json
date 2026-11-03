@@ -6,9 +6,8 @@
     "negative_prompt": "watermark, text, blur, low quality, deformed, jerky motion, noisy static",
     "width": 960,
     "height": 544,
-    "length": 121,
+    "length": 124,
     "steps": 8,
-    "cfg": 3.2,
     "seed": 42
   },
   {
@@ -18,9 +17,8 @@
     "negative_prompt": "watermark, text, blur, low quality, deformed, shaky, glitchy",
     "width": 1344,
     "height": 768,
-    "length": 121,
+    "length": 124,
     "steps": 8,
-    "cfg": 3.0,
     "seed": 108
   },
   {
@@ -30,9 +28,8 @@
     "negative_prompt": "watermark, text, deformed fingers, extra fingers, blur, low quality, noisy audio",
     "width": 1344,
     "height": 768,
-    "length": 121,
+    "length": 124,
     "steps": 8,
-    "cfg": 3.0,
     "seed": 2048
   }
 ]

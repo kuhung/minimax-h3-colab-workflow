@@ -1,0 +1,64 @@
+# 📓 MiniMax H3 Colab Notebook 版本管理体系与演进全景
+
+为了避免在多次迭代过程中“直接盲目覆盖”导致线上与本地版本脱节、无法复现性能基准，本项目实行严格的**语义化版本归档与版本编号管理**。
+
+---
+
+## 📊 一览表：全版本参数与性能指标横评
+
+| 维度 | **v1.0 (基准跑通版)** 🏆 | **v1.5 (旧版试验组 - 超时)** ⚠️ | **v2.0 (当前生产版)** 🚀 | **v2.0 (街景专项版)** 🏙️ |
+| :--- | :--- | :--- | :--- | :--- |
+| **归档文件** | [`v1.0_minimax_h3_l4_benchmark_webp.ipynb`](./v1.0_minimax_h3_l4_benchmark_webp.ipynb) | [`v1.5_minimax_h3_l4_legacy_mp4.ipynb`](./v1.5_minimax_h3_l4_legacy_mp4.ipynb) | [`v2.0_minimax_h3_l4_production_mp4.ipynb`](./v2.0_minimax_h3_l4_production_mp4.ipynb) | [`v2.0_test_shanghai_street_mp4.ipynb`](./v2.0_test_shanghai_street_mp4.ipynb) |
+| **默认入口别名** | `minimax_h3_l4_benchmark_run_results.ipynb` | - | `minimax_h3_l4_production.ipynb` | `test_shanghai_mp4_audio.ipynb` |
+| **出片格式** | **动态 WebP** (`SaveAnimatedWEBP`) | **MP4 视频** (`SaveVideo`) | **MP4 视频** (原生 32kHz 立体声) | **MP4 视频** (原生 32kHz 立体声) |
+| **音频支持** | ❌ 无音频（未加载音频 VAE） | ✅ 有音频 (`VAEDecodeAudio`) | ✅ 原生 32kHz 双声道同频出片 | ✅ 原生 32kHz 双声道同频出片 |
+| **采样器架构** | 双路 `KSampler (cfg=3.0)` | 双路 `KSampler (cfg=3.0)` | **单路无 CFG (`BasicGuider`, CFG=1.0)** | **单路无 CFG (`BasicGuider`, CFG=1.0)** |
+| **DiT 前向次数**| 16 次 / shot (8步×2路) | 16 次 / shot (8步×2路) | **8 次 / shot (计算量腰斩)** | **8 次 / shot (计算量腰斩)** |
+| **推荐分辨率** | 960x544 | 1344x768 (像素多 97.6%) | **960x544 (L4 黄金规格)** | **960x544 (L4 黄金规格)** |
+| **权重量化方案** | `int8_convrot` + `nvfp4` | `int8_convrot` + `nvfp4` | **CUDA 自适应 (`fp8_scaled` / `int8`)** | **CUDA 自适应 (`fp8_scaled` / `int8`)** |
+| **单镜头耗时** | **306.22 秒** (实测存证) | **631+ 秒 (严重超时)** | **~280s - 320 秒** (设计预期) | **~280s - 320 秒** (设计预期) |
+| **L4 显存占用** | 21.77 GB / 22.03 GB | 接近 22.0 GB 极限 | 20.5 ~ 21.5 GB | 20.5 ~ 21.5 GB |
+| **适用场景** | 极限验证硬件与算力基准 | 仅供排错与对照实验 | 工业级无人值守批量生产 (8分镜故事) | 3镜极速上街实测与网页试听 |
+
+---
+
+## 🔍 深度复盘：为什么之前能跑 300 秒，刚刚跑却超时了？
+
+### 1. 之前跑通的 306 秒到底跑了什么？（v1.0 版本真相）
+在项目初期通过完整运行并保留输出的存证文件 [`v1.0_minimax_h3_l4_benchmark_webp.ipynb`](./v1.0_minimax_h3_l4_benchmark_webp.ipynb) 中：
+- **只渲染了无声视频，直接打包为 WebP 动画**。它根本没有加载 32kHz Audio VAE 模型，也没有经历音频潜空间解码与 ffmpeg MP4 重编码。
+- **分辨率严格为 960x544**（约 52.2 万像素）。
+- 在 8 步 Turbo 下，每个镜头纯视频去噪耗时稳定在 **306 秒（约 5.1 分钟）**。
+
+### 2. 刚刚在 Colab 上跑为什么超时暴涨到 631 秒？（v1.5 版本根因）
+用户在 Colab 上实测看到的日志：
+```text
+[03:29:37] ⏳ 渲染去噪中... 已耗时 463s
+[03:32:26] ⏳ 渲染去噪中... 已耗时 631s ... (超时)
+```
+这是因为当时运行的正是 `v1.5` 旧架构：
+1. **分辨率暴增 97.6%**：任务配置从 960x544 变成了 1344x768（103.2 万像素）。DiT 模型的计算量随空间补丁数量成非线性增加，耗时直接翻倍。
+2. **CFG=3.0 的双前向算力浪费**：旧版使用了正负提示词双路编码，每一步去噪都要跑 Unconditional 和 Conditional 两次前向传播。8 步实际跑了 16 步 DiT。
+3. **叠加音频解码与压制开销**：增加了 `VAEDecodeAudio`（`minimax_h3_audio_vae_fp32.safetensors`）以及 `CreateVideo`。
+4. **算子慢路径回退**：Colab 默认环境为 CUDA 12.x，硬跑专为 CUDA 13.0 设计的 `int8_convrot` 会触发降级回退。
+四重因素叠加，单镜头耗时直接翻倍到 630 秒以上，超过了默认心跳或超时阈值。
+
+### 3. v2.0 如何将时间重新拉回 300 秒？
+1. **单路无 CFG 架构 (`BasicGuider`, CFG=1.0)**：Turbo LoRA 模型属于蒸馏模型，官方原生拓扑仅需单路正向提示词。**DiT 前向传播次数由 16 次直接减半为 8 次**，计算量节省 50%！这部分节省出来的算力完全抵消了音频处理开销。
+2. **锁定 L4 黄金规格 960x544**：画质足以满足 1080p 手机端竖屏/横屏展示，帧数 124 帧严格满足 17k+5 网格对齐。
+3. **CUDA 自适应量化选择**：检测到 Colab 默认 CUDA 12.x 时自动加载 `minimax_h3_fl2va_pruned_fp8_scaled.safetensors`，杜绝慢路径。
+
+---
+
+## 🛠️ 文件管理规约与防混淆指南
+
+为防止后续再次出现“盲目覆盖、线上跑的与本地想的不一致”：
+
+1. **版本命名文件为主，别名文件为辅**：
+   - 调试与排查问题时，优先在 Colab 中打开带有版本前缀的文件（如 `v2.0_test_shanghai_street_mp4.ipynb`）。
+   - 默认入口文件（如 `minimax_h3_l4_production.ipynb`）由生成脚本从最新的 `v2.0_*` 自动同步，其内部第一行 Markdown 明确打上版本号水印。
+2. **禁止手动随意在 Notebook 内部硬编码改动**：
+   - 所有 Notebook 均由 `scripts/generate_notebook.py` 和 `scripts/build_shanghai_notebook.py` 程序化生成。
+   - 生成脚本会执行 `ast.parse` 静态分析与 node 拓扑校验，确保无未定义变量、无断链节点。
+3. **线上 Colab 与本地对齐方法**：
+   - 每次修改后，在 Colab 中请重新上传对应的版本文件，或检查第一行 Markdown 中的 `版本标识` 是否与本地一致。

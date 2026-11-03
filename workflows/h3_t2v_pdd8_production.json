@@ -12,7 +12,8 @@
   "2": {
     "inputs": {
       "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
-      "type": "minimax"
+      "type": "minimax",
+      "device": "default"
     },
     "class_type": "CLIPLoader",
     "_meta": {
@@ -51,71 +52,101 @@
       "title": "Turbo 8-Step LoRA"
     }
   },
-  "5": {
-    "inputs": {
-      "width": 1344,
-      "height": 768,
-      "length": 124
-    },
-    "class_type": "EmptyMiniMaxH3LatentAV",
-    "_meta": {
-      "title": "Empty MiniMax H3 AV Latent"
-    }
-  },
   "6": {
     "inputs": {
-      "text": "Cinematic slow forward dolly tracking through an endless corridor of high-density AI server racks. Blue and amber LED activity lights flickering rhythmically. Volumetric cold mist cooling effects. Deep industrial hum of ventilation fans, intermittent electronic beep echoes in an enclosed server hall.",
+      "prompt": "Cinematic slow forward dolly tracking through an endless corridor of high-density AI server racks. Blue and amber LED activity lights flickering rhythmically. Volumetric cold mist cooling effects. Deep industrial hum of ventilation fans, intermittent electronic beep echoes in an enclosed server hall.",
+      "width": 1344,
+      "height": 768,
+      "length": 124,
       "clip": [
         "2",
         0
+      ],
+      "vae": [
+        "4",
+        0
       ]
     },
-    "class_type": "CLIPTextEncode",
+    "class_type": "MiniMaxH3ImageToVideo",
     "_meta": {
-      "title": "Positive Prompt (Visual + Camera + Audio)"
+      "title": "MiniMax H3 ImageToVideo (Latent & Conditioning)"
     }
   },
   "7": {
     "inputs": {
-      "text": "distorted audio, watermark, text, blur, low quality, deformed, jerky motion, noisy static, oversaturated",
-      "clip": [
-        "2",
-        0
-      ]
-    },
-    "class_type": "CLIPTextEncode",
-    "_meta": {
-      "title": "Negative Prompt"
-    }
-  },
-  "3": {
-    "inputs": {
-      "seed": 1024,
-      "steps": 8,
-      "cfg": 3.0,
-      "sampler_name": "euler",
-      "scheduler": "simple",
-      "denoise": 1.0,
       "model": [
         "10",
         0
       ],
-      "positive": [
+      "conditioning": [
         "6",
-        0
-      ],
-      "negative": [
-        "7",
-        0
-      ],
-      "latent_image": [
-        "5",
         0
       ]
     },
-    "class_type": "KSampler",
+    "class_type": "BasicGuider",
     "_meta": {
-      "title": "KSampler (8-Step Turbo Production)"
+      "title": "BasicGuider (No CFG, CFG=1.0)"
+    }
+  },
+  "14": {
+    "inputs": {
+      "noise_seed": 1024
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "Random Noise"
+    }
+  },
+  "15": {
+    "inputs": {
+      "sampler_name": "res_multistep"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect (res_multistep)"
+    }
+  },
+  "16": {
+    "inputs": {
+      "steps": 8,
+      "denoise": 1.0,
+      "scheduler": "simple",
+      "model": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler (simple)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "noise": [
+        "14",
+        0
+      ],
+      "guider": [
+        "7",
+        0
+      ],
+      "sampler": [
+        "15",
+        0
+      ],
+      "sigmas": [
+        "16",
+        0
+      ],
+      "latent_image": [
+        "6",
+        1
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
     }
   },
   "8": {
@@ -174,7 +205,8 @@
         0
       ],
       "filename_prefix": "H3_PDD8_Production",
-      "format": "mp4"
+      "format": "mp4",
+      "codec": "auto"
     },
     "class_type": "SaveVideo",
     "_meta": {

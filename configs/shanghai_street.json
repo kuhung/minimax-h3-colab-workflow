@@ -3,36 +3,30 @@
     "id": "shanghai_01_shengjian_morning",
     "title": "上海街景1: 弄堂石库门与生煎包油煎 (市井早市烟火)",
     "prompt": "Cinematic close-up macro shot in an old Shanghai lane alley in front of a Shikumen red brick archway. A large traditional cast-iron flat pan sizzling with round shengjian mantou buns, crispy golden-brown sesame bottoms, sprinkled with fresh chopped green scallions. Dense fragrant white steam clouds rising softly in the cool morning dawn light. Crisp high-frequency sizzling of frying buns in bubbling hot oil, gentle iron lid clinking, distant charming acoustic chime of a vintage bicycle bell echoing down the narrow lane.",
-    "negative_prompt": "watermark, text, blur, low quality, deformed, jerky motion, noisy static audio, oversaturated",
-    "width": 1344,
-    "height": 768,
+    "width": 960,
+    "height": 544,
     "length": 124,
     "steps": 8,
-    "cfg": 3.0,
     "seed": 1842
   },
   {
     "id": "shanghai_02_french_concession_plane_trees",
     "title": "上海街景2: 武康路法租界梧桐落叶与洋房 (浪漫深秋光影)",
     "prompt": "Cinematic slow forward dolly tracking shot along a quiet curved street in the Shanghai French Concession near Wukang Road. Golden-yellow French plane tree leaves gently fluttering down onto wet black asphalt. Soft dappled autumn sunlight filtering through dense tree canopy, casting warm patterns onto historic red brick villa facades and black wrought-iron balconies. Gentle autumn breeze rustling crisp dry leaves along the street, distant muffled hum of a classic streetcar rolling smoothly on rails, tranquil peaceful European-style neighborhood ambiance.",
-    "negative_prompt": "watermark, text, blur, low quality, deformed geometry, jerky camera, noisy audio",
-    "width": 1344,
-    "height": 768,
+    "width": 960,
+    "height": 544,
     "length": 124,
     "steps": 8,
-    "cfg": 3.0,
     "seed": 1933
   },
   {
     "id": "shanghai_03_bund_neon_reflections",
     "title": "上海街景3: 外滩雨夜倒影与陆家嘴天际线 (现代赛博流光)",
     "prompt": "Cinematic low-angle tracking shot along the wet reflective granite promenade of the Shanghai Bund after an evening drizzle. Glossy puddles creating mirror-like reflections of the golden illuminated heritage buildings and the vibrant blue-and-pink neon skyline of the Lujiazui Oriental Pearl across the Huangpu River. Gentle rhythmic water drops trickling from stone balustrades into puddles, deep resonant distant acoustic horn blast of a passing river ferry echoing over the dark water, smooth wet tires whispering on distant asphalt.",
-    "negative_prompt": "watermark, text, blur, low quality, deformed, shaky, noisy static audio",
-    "width": 1344,
-    "height": 768,
+    "width": 960,
+    "height": 544,
     "length": 124,
     "steps": 8,
-    "cfg": 3.0,
     "seed": 2024
   }
 ]

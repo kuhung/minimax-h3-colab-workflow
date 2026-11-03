@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """
-Headless Batch Runner for MiniMax H3 on ComfyUI.
-Sends prompts to ComfyUI local API (127.0.0.1:8188), monitors generation progress,
-handles timeout interrupts, and exports output videos/audio and metadata directly to Google Drive.
+Headless Batch Runner for MiniMax H3 on ComfyUI (2.0 Architecture).
+Features:
+1. Native 2.0 Topology Support: MiniMaxH3ImageToVideo + BasicGuider + SamplerCustomAdvanced (CFG=1.0).
+2. Backward compatibility with legacy KSampler graphs.
+3. 17k + 5 Frame Alignment (align_frame_count).
+4. Structured Multi-shot / Multimodal Prompt Assembler (format_h3_prompt).
+5. Dynamic /object_info Contract Validation & Unsupported Parameter Pruning.
+6. Timeout Interrupt & Direct Google Drive Export.
 """
 
 import os
 import sys
+import copy
 import json
 import time
 import shutil
@@ -17,13 +23,117 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
+def align_frame_count(n: int) -> int:
+    """Align frame count upwards to 17k + 5 (MiniMax H3 latent temporal grid at 24fps)."""
+    n = max(5, int(n))
+    return n + (5 - n % 17) % 17
+
+def format_h3_prompt(task: dict) -> str:
+    """
+    Format MiniMax H3 structured prompt according to official multi-shot / multimodal spec.
+    If task contains 'shots' or 'overall_soundscape', formats:
+      integrated_multimodal_description:
+      [Shot 1] ...
+      [Shot 2] At MM:SS.mmm, ...
+
+      overall_soundscape: ...
+
+      non_diegetic_music: ...
+    If task already provides plain 'prompt', returns it directly.
+    """
+    if not isinstance(task, dict):
+        return str(task)
+
+    shots = task.get("shots")
+    soundscape = task.get("overall_soundscape")
+    music = task.get("non_diegetic_music")
+
+    if not shots and not soundscape and not music:
+        return task.get("prompt", "")
+
+    parts = []
+    if shots:
+        shot_lines = []
+        for i, s in enumerate(shots, 1):
+            if isinstance(s, dict):
+                t_str = s.get("time")
+                desc = s.get("description", s.get("prompt", ""))
+                if i == 1 and (not t_str or t_str == "00:00.000" or t_str == "0"):
+                    shot_lines.append(f"[Shot 1] {desc}")
+                else:
+                    t_val = t_str if t_str else f"00:{((i-1)*5):02d}.000"
+                    shot_lines.append(f"[Shot {i}] At {t_val}, {desc}")
+            else:
+                if i == 1:
+                    shot_lines.append(f"[Shot 1] {s}")
+                else:
+                    shot_lines.append(f"[Shot {i}] At 00:{((i-1)*5):02d}.000, {s}")
+        parts.append("integrated_multimodal_description:\n" + "\n".join(shot_lines))
+    elif task.get("prompt"):
+        parts.append(f"integrated_multimodal_description:\n{task['prompt']}")
+
+    if soundscape:
+        parts.append(f"overall_soundscape: {soundscape}")
+    if music:
+        parts.append(f"non_diegetic_music: {music}")
+
+    return "\n\n".join(parts)
+
+def fetch_object_info(server_url: str) -> Optional[dict]:
+    """Queries ComfyUI /object_info endpoint."""
+    try:
+        req = urllib.request.Request(f"{server_url}/object_info")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except Exception as e:
+        print(f"⚠️ 获取 ComfyUI /object_info 提示: {e}")
+        return None
+
+def validate_and_adapt_workflow(wf: dict, obj_info: Optional[dict]) -> dict:
+    """
+    Validates node classes and input fields against ComfyUI /object_info.
+    Automatically prunes unsupported optional inputs to prevent ComfyUI 400 rejection.
+    """
+    if not obj_info:
+        return wf
+
+    cleaned_wf = copy.deepcopy(wf)
+    for nid, node in cleaned_wf.items():
+        if not isinstance(node, dict):
+            continue
+        ctype = node.get("class_type")
+        if not ctype:
+            continue
+        if ctype not in obj_info:
+            raise ValueError(f"节点 [{nid}] 类名 '{ctype}' 未在 ComfyUI 中注册！请检查扩展是否安装完整。")
+
+        node_spec = obj_info[ctype].get("input", {})
+        req = set(node_spec.get("required", {}).keys())
+        opt = set(node_spec.get("optional", {}).keys())
+        valid_keys = req | opt
+        inputs = node.get("inputs", {})
+
+        to_remove = [k for k in list(inputs.keys()) if k not in valid_keys]
+        for k in to_remove:
+            print(f"⚠️ 节点 [{nid}: {ctype}] 移除非当前版本支持的输入参数: '{k}'")
+            del inputs[k]
+
+        missing_req = [k for k in req if k not in inputs]
+        if missing_req:
+            raise ValueError(f"节点 [{nid}: {ctype}] 缺失必要输入参数: {missing_req}")
+
+    return cleaned_wf
+
 def post_prompt(server_url: str, prompt_workflow: dict) -> Optional[str]:
     """Submits workflow JSON to ComfyUI API /prompt."""
-    data = json.dumps({"prompt": prompt_workflow}).encode("utf-8")
+    data = json.dumps({"prompt": prompt_workflow, "client_id": "batch_runner_2.0"}).encode("utf-8")
     req = urllib.request.Request(f"{server_url}/prompt", data=data, headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
+        with urllib.request.urlopen(req, timeout=15) as response:
             res = json.loads(response.read().decode("utf-8"))
+            if res.get("error") or res.get("node_errors"):
+                print(f"❌ ComfyUI 拒绝执行工作流: {res}")
+                return None
             return res.get("prompt_id")
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace")
@@ -58,7 +168,7 @@ def wait_for_completion(server_url: str, prompt_id: str, timeout_sec: int = 900)
             pass
 
         elapsed = int(time.time() - start_time)
-        if elapsed - last_print >= 15:
+        if elapsed - last_print >= 20:
             print(f"   ⏳ 渲染去噪中... 已耗时 {elapsed}s")
             last_print = elapsed
 
@@ -73,7 +183,7 @@ def extract_output_files(history_data: dict, comfy_output_dir: Path) -> List[Pat
     files = []
     outputs = history_data.get("outputs", {})
     for node_id, node_data in outputs.items():
-        for category in ["images", "videos", "gifs", "audio"]:
+        for category in ["videos", "gifs", "images", "audio"]:
             for item in node_data.get(category, []):
                 filename = item.get("filename")
                 if filename:
@@ -90,10 +200,11 @@ def run_batch(
     server_url: str = "http://127.0.0.1:8188",
     comfy_output_dir: str = "/content/ComfyUI/output",
     timeout_per_shot: int = 900,
-    tasks_list: Optional[List[dict]] = None
+    tasks_list: Optional[List[dict]] = None,
+    active_models: Optional[Dict[str, str]] = None,
 ):
-    print("=" * 60)
-    print("🎬 MiniMax H3 批处理队列执行器 (Batch Runner)")
+    print("=" * 68)
+    print("🎬 MiniMax H3 批处理队列执行器 (Batch Runner 2.0 - BasicGuider / No-CFG)")
     print(f"📄 工作流模板: {workflow_path}")
 
     out_path = Path(output_dir)
@@ -114,73 +225,130 @@ def run_batch(
     else:
         raise ValueError("必须提供 prompts_path 或 tasks_list 其中之一！")
 
+    # 动态解析当前环境实际权重（优先使用传入的 active_models，未传时自动探测 models 目录）
+    resolved_models = dict(active_models) if active_models else {}
+    if not resolved_models and comfy_out_path.parent.exists():
+        models_dir = comfy_out_path.parent / "models"
+        diff_dir = models_dir / "diffusion_models"
+        vae_dir = models_dir / "vae"
+        lora_dir = models_dir / "loras"
+        if diff_dir.exists():
+            for cand in ["minimax_h3_fl2va_pruned_fp8_scaled.safetensors", "minimax_h3_fl2va_pruned_int8_convrot.safetensors"]:
+                if (diff_dir / cand).exists():
+                    resolved_models["diffusion_model"] = cand
+                    break
+        if vae_dir.exists():
+            for cand in ["minimax_h3_video_vae_fp16.safetensors", "minimax_h3_video_vae_int8_convrot.safetensors"]:
+                if (vae_dir / cand).exists():
+                    resolved_models["video_vae"] = cand
+                    break
+        if lora_dir.exists():
+            for cand in ["minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors", "minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors"]:
+                if (lora_dir / cand).exists():
+                    resolved_models["lora"] = cand
+                    break
+
+    if resolved_models:
+        print(f"🎯 动态绑定的活动权重: {resolved_models}")
+
     print(f"💾 最终输出落盘路径: {output_dir}")
-    print("=" * 60)
+    print("=" * 68)
     print(f"📊 共检测到 {len(tasks)} 个排产镜头任务\n")
+
+    # 预检 /object_info 获取节点契约
+    obj_info = fetch_object_info(server_url)
 
     for idx, task in enumerate(tasks, 1):
         task_id = task.get("id", f"shot_{idx:02d}")
-        title = task.get("title", "未命名镜头")
-        prompt_text = task.get("prompt", "")
+        title = task.get("title", task_id)
+        prompt_text = format_h3_prompt(task)
         neg_text = task.get("negative_prompt", "")
-        steps = task.get("steps", 8)
-        cfg = task.get("cfg", 3.0)
-        seed = task.get("seed", int(time.time()))
-        width = task.get("width", 1344)
-        height = task.get("height", 768)
-        length = task.get("length", 121)
+        steps = int(task.get("steps", 8))
+        seed = int(task.get("seed", int(time.time())))
+        width = int(task.get("width", 1344))
+        height = int(task.get("height", 768))
+        raw_length = int(task.get("length", 124))
+        length = align_frame_count(raw_length)
+        if length != raw_length:
+            print(f"   ℹ️ 帧数自动网格对齐 (17k + 5): {raw_length} -> {length}")
 
         print(f"[{idx}/{len(tasks)}] 正在启动: {task_id} - {title}")
         print(f"   📐 规格: {width}x{height} | {length} 帧 | 步数 {steps} | 种子 {seed}")
-        print(f"   📝 提示词: {prompt_text[:80]}...")
+        print(f"   📝 提示词: {prompt_text[:90]}...")
 
         # 克隆工作流并动态注入参数
-        wf = json.loads(json.dumps(base_workflow))
-
-        # 检查是否挂载加速 LoRA
-        has_lora = any(
-            isinstance(node, dict) and node.get("class_type") in ("LoraLoader", "LoraLoaderModelOnly")
-            for node in wf.values()
-        )
-        force_steps = task.get("force_steps", False)
-        actual_steps = steps
+        wf = copy.deepcopy(base_workflow)
 
         # 遍历节点并匹配注入
         for node_id, node in wf.items():
+            if not isinstance(node, dict):
+                continue
             class_type = node.get("class_type")
             inputs = node.get("inputs", {})
             title_meta = node.get("_meta", {}).get("title", "")
 
-            if class_type == "CLIPTextEncode" and (title_meta.startswith("Positive") or "Positive" in title_meta):
-                inputs["text"] = prompt_text
-            elif class_type == "CLIPTextEncode" and ("Negative" in title_meta or title_meta.startswith("Negative")):
-                if neg_text:
+            # 动态权重注入
+            if class_type == "UNETLoader" and "diffusion_model" in resolved_models:
+                inputs["unet_name"] = resolved_models["diffusion_model"]
+            elif class_type == "VAELoader" and "video_vae" in resolved_models:
+                if inputs.get("vae_name") != "minimax_h3_audio_vae_fp32.safetensors":
+                    inputs["vae_name"] = resolved_models["video_vae"]
+            elif class_type in ("LoraLoaderModelOnly", "LoraLoader") and "lora" in resolved_models:
+                inputs["lora_name"] = resolved_models["lora"]
+
+            # 2.0 新节点注入
+            elif class_type == "MiniMaxH3ImageToVideo":
+                inputs["prompt"] = prompt_text
+                inputs["width"] = width
+                inputs["height"] = height
+                inputs["length"] = length
+            elif class_type == "RandomNoise":
+                inputs["noise_seed"] = seed
+            elif class_type == "KSamplerSelect":
+                if "sampler_name" in task:
+                    inputs["sampler_name"] = task["sampler_name"]
+            elif class_type == "BasicScheduler":
+                inputs["steps"] = steps
+                if "scheduler" in task:
+                    inputs["scheduler"] = task["scheduler"]
+                if "denoise" in task:
+                    inputs["denoise"] = float(task["denoise"])
+
+            # 输出节点注入
+            elif class_type in ("SaveVideo", "SaveAnimatedWEBP", "VHS_VideoCombine"):
+                inputs["filename_prefix"] = f"{task_id}_{seed}"
+                if class_type == "SaveVideo":
+                    inputs.setdefault("format", "mp4")
+                elif class_type == "SaveAnimatedWEBP":
+                    inputs.setdefault("fps", 24.0)
+                    inputs.setdefault("lossless", False)
+                    inputs.setdefault("quality", 85)
+                    inputs.setdefault("method", "default")
+            elif class_type == "CreateVideo":
+                inputs.setdefault("fps", 24.0)
+
+            # 向后兼容旧版节点
+            elif class_type == "CLIPTextEncode":
+                if "Positive" in title_meta or not ("Negative" in title_meta):
+                    inputs["text"] = prompt_text
+                elif "Negative" in title_meta and neg_text:
                     inputs["text"] = neg_text
             elif class_type in ("EmptyMiniMaxH3LatentAV", "EmptyH3LatentVideo", "EmptyLatentVideo"):
                 inputs["width"] = width
                 inputs["height"] = height
                 inputs["length"] = length
             elif class_type == "KSampler":
-                if not has_lora and steps < 15 and not force_steps:
-                    default_steps = inputs.get("steps", 20)
-                    print(f"   ⚠️ 当前工作流未挂载加速 LoRA，保留工作流模板默认步数 ({default_steps}) 以防生成废片")
-                    actual_steps = default_steps
-                else:
-                    inputs["steps"] = steps
-                    actual_steps = steps
-                inputs["cfg"] = cfg
+                inputs["steps"] = steps
                 inputs["seed"] = seed
-            elif class_type in ("SaveAnimatedWEBP", "VHS_VideoCombine", "SaveVideo"):
-                inputs["filename_prefix"] = f"{task_id}_{seed}"
-                if class_type == "SaveAnimatedWEBP":
-                    inputs.setdefault("fps", 24.0)
-                    inputs.setdefault("lossless", False)
-                    inputs.setdefault("quality", 85)
-                    inputs.setdefault("method", "default")
-                elif class_type == "SaveVideo":
-                    inputs.setdefault("format", "mp4")
-            elif class_type == "CreateVideo":
-                inputs.setdefault("fps", 24.0)
+                if "cfg" in task:
+                    inputs["cfg"] = float(task["cfg"])
+
+        # 校验并适配 ComfyUI 节点输入契约
+        try:
+            wf = validate_and_adapt_workflow(wf, obj_info)
+        except Exception as ve:
+            print(f"❌ 契约校验失败: {ve}")
+            continue
 
         # 提交至 ComfyUI
         t_start = time.time()
@@ -242,8 +410,7 @@ def run_batch(
             "cost_seconds": t_cost,
             "resolution": f"{width}x{height}",
             "length_frames": length,
-            "steps": actual_steps,
-            "cfg": cfg,
+            "steps": steps,
             "seed": seed,
             "prompt": prompt_text,
             "saved_files": copied_files
@@ -253,14 +420,14 @@ def run_batch(
 
         print("-" * 50)
 
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 68)
     print(f"🎉 全部批处理任务执行完毕！")
     print(f"📂 成片与日志均已持久化至: {out_path.resolve()}")
-    print("=" * 60)
+    print("=" * 68)
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="ComfyUI Batch Runner for MiniMax H3")
+    parser = argparse.ArgumentParser(description="ComfyUI Batch Runner for MiniMax H3 (2.0)")
     parser.add_argument("--workflow", default="workflows/h3_t2v_pdd8_production.json", help="Path to workflow JSON")
     parser.add_argument("--prompts", default="configs/prompts.example.json", help="Path to prompts JSON")
     parser.add_argument("--output", default="/content/drive/MyDrive/MiniMax_Outputs", help="Output directory")

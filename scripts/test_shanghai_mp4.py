@@ -3,9 +3,9 @@
 Dedicated Small-Scale Test Runner: Shanghai Street Scene (10-20s Audio MP4)
 Demonstrates Agent/Colab autonomous scheduling with audio-visual generation:
 - Hardware Gatekeeper (L4 GPU validation)
-- Drive Cache Fast Symlinking (including 32kHz Audio VAE)
+- Drive Cache Fast Symlinking & Adaptive Weight Selection (cu130 vs cu12x)
 - Background ComfyUI daemon lifecycle management
-- Native 32kHz Stereo Audio MP4 generation via VAEDecodeAudio + CreateVideo + SaveVideo
+- Native 32kHz Stereo Audio MP4 generation via BasicGuider (CFG=1.0) 2.0 topology
 - Watchdog & Auto-shutdown to prevent idle compute unit drain
 """
 
@@ -41,13 +41,16 @@ def run_shanghai_test(
     comfy_root: str = "/content/ComfyUI",
     drive_cache: str = "/content/drive/MyDrive/MiniMax_Models",
     watchdog_hours: float = 1.0,
+    variant: str = "auto",
+    turbo_steps: int = 8,
 ):
     print("=" * 68)
-    print("🏙️ MiniMax H3 自动化能力测试: 上海街景原生音画 MP4 出片")
+    print("🏙️ MiniMax H3 自动化能力测试: 上海街景原生音画 MP4 出片 (2.0)")
     print(f"🎬 规划镜头数: {shots} 镜 (每镜 124 帧 @ 24fps ≈ 5.16s | 总片长 ≈ {shots * 5.16:.1f}s)")
     print(f"⏱️ 预计耗时: ~{shots * 5.1:.1f} 分钟 | 预计消耗算力: ~{shots * 0.16:.2f} CU")
     print(f"🔊 音频规格: 32kHz 原生双声道立体声 (Audio VAE FP32)")
     print(f"📦 封装格式: MP4 (H.264 / AAC)")
+    print(f"🎯 量化模式: {variant} | Turbo LoRA: {turbo_steps}-Step")
     print(f"🛑 自动关机防扣费: {'已开启 (生成完毕立即断开 runtime)' if auto_shutdown else '未开启 (手动断开)'}")
     print("=" * 68)
 
@@ -77,7 +80,12 @@ def run_shanghai_test(
     # 4. 挂载模型软链接
     print("\n[步骤 3/5] 挂载 Drive 缓存模型软链接...")
     ensure_comfyui_installed(comfy_path)
-    download_or_link(comfy_path, drive_cache_path)
+    active_files = download_or_link(
+        comfy_path,
+        drive_cache_path,
+        variant=variant,
+        turbo_steps=turbo_steps
+    )
 
     # 检查 Audio VAE 软链接就绪情况
     audio_vae_file = comfy_path / "models" / "vae" / "minimax_h3_audio_vae_fp32.safetensors"
@@ -142,6 +150,8 @@ if __name__ == "__main__":
     parser.add_argument("--comfy-root", default="/content/ComfyUI", help="ComfyUI root path")
     parser.add_argument("--drive-cache", default="/content/drive/MyDrive/MiniMax_Models", help="Drive models cache")
     parser.add_argument("--watchdog-hours", type=float, default=1.0, help="Watchdog timeout limit in hours")
+    parser.add_argument("--variant", type=str, default="auto", choices=["auto", "int8_convrot", "fp8_scaled"], help="Quantization variant")
+    parser.add_argument("--turbo-steps", type=int, default=8, choices=[4, 8], help="Turbo LoRA step variant (4 or 8)")
     args = parser.parse_args()
 
     run_shanghai_test(
@@ -153,4 +163,6 @@ if __name__ == "__main__":
         comfy_root=args.comfy_root,
         drive_cache=args.drive_cache,
         watchdog_hours=args.watchdog_hours,
+        variant=args.variant,
+        turbo_steps=args.turbo_steps,
     )
