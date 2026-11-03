@@ -8,8 +8,7 @@
 
 | 维度 | **v1.0 (基准跑通版)** 🏆 | **v1.5 (旧版试验组 - 超时)** ⚠️ | **v2.0 (当前生产版)** 🚀 | **v2.0 (街景专项版)** 🏙️ |
 | :--- | :--- | :--- | :--- | :--- |
-| **归档文件** | [`v1.0_minimax_h3_l4_benchmark_webp.ipynb`](./v1.0_minimax_h3_l4_benchmark_webp.ipynb) | [`v1.5_minimax_h3_l4_legacy_mp4.ipynb`](./v1.5_minimax_h3_l4_legacy_mp4.ipynb) | [`v2.0_minimax_h3_l4_production_mp4.ipynb`](./v2.0_minimax_h3_l4_production_mp4.ipynb) | [`v2.0_test_shanghai_street_mp4.ipynb`](./v2.0_test_shanghai_street_mp4.ipynb) |
-| **默认入口别名** | `minimax_h3_l4_benchmark_run_results.ipynb` | - | `minimax_h3_l4_production.ipynb` | `test_shanghai_mp4_audio.ipynb` |
+| **版本归档文件** | [`v1.0_minimax_h3_l4_benchmark_webp.ipynb`](./v1.0_minimax_h3_l4_benchmark_webp.ipynb) | [`v1.5_minimax_h3_l4_legacy_mp4.ipynb`](./v1.5_minimax_h3_l4_legacy_mp4.ipynb) | [`v2.0_minimax_h3_l4_production_mp4.ipynb`](./v2.0_minimax_h3_l4_production_mp4.ipynb) | [`v2.0_test_shanghai_street_mp4.ipynb`](./v2.0_test_shanghai_street_mp4.ipynb) |
 | **出片格式** | **动态 WebP** (`SaveAnimatedWEBP`) | **MP4 视频** (`SaveVideo`) | **MP4 视频** (原生 32kHz 立体声) | **MP4 视频** (原生 32kHz 立体声) |
 | **音频支持** | ❌ 无音频（未加载音频 VAE） | ✅ 有音频 (`VAEDecodeAudio`) | ✅ 原生 32kHz 双声道同频出片 | ✅ 原生 32kHz 双声道同频出片 |
 | **采样器架构** | 双路 `KSampler (cfg=3.0)` | 双路 `KSampler (cfg=3.0)` | **单路无 CFG (`BasicGuider`, CFG=1.0)** | **单路无 CFG (`BasicGuider`, CFG=1.0)** |
@@ -55,11 +54,12 @@
 
 为防止后续再次出现“盲目覆盖、线上跑的与本地想的不一致”：
 
-1. **版本命名文件为主，别名文件为辅**：
-   - 调试与排查问题时，优先在 Colab 中打开带有版本前缀的文件（如 `v2.0_test_shanghai_street_mp4.ipynb`）。
-   - 默认入口文件（如 `minimax_h3_l4_production.ipynb`）由生成脚本从最新的 `v2.0_*` 自动同步，其内部第一行 Markdown 明确打上版本号水印。
-2. **禁止手动随意在 Notebook 内部硬编码改动**：
-   - 所有 Notebook 均由 `scripts/generate_notebook.py` 和 `scripts/build_shanghai_notebook.py` 程序化生成。
+1. **严格单一语义版本控制，杜绝无版本号混乱**：
+   - 本目录仅保留具备明确语义版本的 `.ipynb` 文件（`v1.0_*`, `v1.5_*`, `v2.0_*`）。
+   - 彻底删除早期无编号文件（`minimax_h3_l4_benchmark_run_results.ipynb`、`minimax_h3_l4_production.ipynb`、`test_shanghai_mp4_audio.ipynb` 等），消除命名歧义与覆盖混乱。
+   - 在 Colab 中调试与运行任务，必须指认带明确版本前缀的文件（例如生产运行选 `v2.0_minimax_h3_l4_production_mp4.ipynb`）。
+2. **禁止手动在 Notebook 内部随意硬编码改动**：
+   - 生产 Notebook 均由 `scripts/generate_notebook.py` 和 `scripts/build_shanghai_notebook.py` 程序化生成。
    - 生成脚本会执行 `ast.parse` 静态分析与 node 拓扑校验，确保无未定义变量、无断链节点。
-3. **线上 Colab 与本地对齐方法**：
+3. **线上 Colab 与本地严格对齐**：
    - 每次修改后，在 Colab 中请重新上传对应的版本文件，或检查第一行 Markdown 中的 `版本标识` 是否与本地一致。

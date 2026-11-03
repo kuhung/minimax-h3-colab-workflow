@@ -65,16 +65,16 @@ flowchart TD
 
 ## 📁 仓库目录结构
 
-- 📓 [notebooks/minimax_h3_l4_production.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/minimax_h3_l4_production.ipynb) — **Colab 核心交互笔记本 (2.0)**（自适应权重、看门狗、门禁、完整性缓存、2.0 批处理与 HTML5 试听）。
-- 📓 [notebooks/test_shanghai_mp4_audio.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/test_shanghai_mp4_audio.ipynb) — **上海街景 10~20s 快速测试笔记本 (2.0)**。
+- 📓 [notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb) — **Colab 核心生产笔记本 (2.0)**（单路无 CFG、自适应权重、直连下载优先 + Drive 容灾回退、看门狗熔断与 HTML5 试听）。
+- 📓 [notebooks/v2.0_test_shanghai_street_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_test_shanghai_street_mp4.ipynb) — **上海街景 10~20s 快速测试笔记本 (2.0)**。
+- 📓 [notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb) — **v1.0 基准存证笔记本**（含 306s/镜 实测日志存证）。
+- 📓 [notebooks/v1.5_minimax_h3_l4_legacy_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1.5_minimax_h3_l4_legacy_mp4.ipynb) — **v1.5 超时归档笔记本**（旧版双路 CFG=3.0 排错对照）。
 - 🤖 [scripts/agent_colab_runner.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/agent_colab_runner.py) — **Agent 自动化托管执行器**（支持三重防扣费兜底、自适应权重、看门狗熔断）。
 - ⚙️ [scripts/check_gpu.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/check_gpu.py) — **硬件环境门禁脚本**（严格校验计算能力 ≥ 8.0、显存与磁盘；支持不达标立即销毁）。
-- 📦 [scripts/download_models.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/download_models.py) — **权重自适应校验与 Drive 缓存管理**（`--variant` / `--turbo-steps`、精确字节校验、safetensors 头部元数据边界校验）。
+- 📦 [scripts/download_models.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/download_models.py) — **权重自适应校验与高速拉取**（直连下载优先、`--variant` / `--turbo-steps`、精确字节校验、safetensors 头部边界校验）。
 - 🎬 [scripts/batch_runner.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/batch_runner.py) — **无头批量队列渲染器 (2.0)**（`BasicGuider` 拓扑、`format_h3_prompt` 多镜头组装、`align_frame_count` 17k+5 帧数对齐、`/object_info` 契约校验）。
-- 🧩 [workflows/h3_t2v_pdd8_production.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/workflows/h3_t2v_pdd8_production.json) — 2.0 标准 768p 8步无 CFG MP4 工作流。
-- 🧩 [workflows/h3_t2v_pdd8_mp4.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/workflows/h3_t2v_pdd8_mp4.json) — 2.0 标准 MP4 音画同出工作流。
+- 🧩 [workflows/h3_t2v_pdd8_production.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/workflows/h3_t2v_pdd8_production.json) — 2.0 标准 960x544 8步无 CFG MP4 工作流。
 - 🧩 [workflows/h3_t2v_pdd8_webp.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/workflows/h3_t2v_pdd8_webp.json) — 2.0 WebP 快速工作流。
-- 🧩 [workflows/h3_t2v_l4_baseline.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/workflows/h3_t2v_l4_baseline.json) — 2.0 544p 冒烟基线工作流。
 - 📋 [configs/prompts.example.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/prompts.example.json) — 任务排期模板（已对齐 124 帧）。
 - 📋 [configs/story_cyber_dawn.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/story_cyber_dawn.json) — 短视频分镜剧本案例（《极客破晓：硅基脉动》，8 镜头成片流水线）。
 - 📋 [configs/shanghai_street.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/shanghai_street.json) — 上海街景 3 镜案例。
@@ -113,7 +113,7 @@ python scripts/agent_colab_runner.py \
 
 ## 🛠️ 方案 B：传统交互 Notebook 运行 SOP
 
-1. 上传或在 Google Colab 中打开 [minimax_h3_l4_production.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/minimax_h3_l4_production.ipynb)。
+1. 上传或在 Google Colab 中打开 [v2.0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb)。
 2. 更改运行时类型：**GPU -> L4 (高内存)**。
 3. 点击「代码执行程序」->「全部运行」。
 4. 步骤 2 授权 Google Drive 挂载即可，运行完毕自动导出 MP4 并安全关机。

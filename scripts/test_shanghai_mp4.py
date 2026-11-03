@@ -35,7 +35,7 @@ from scripts.agent_colab_runner import (
 def run_shanghai_test(
     shots: int = 2,
     auto_shutdown: bool = False,
-    workflow_path: str = "workflows/h3_t2v_pdd8_mp4.json",
+    workflow_path: str = "workflows/h3_t2v_pdd8_production.json",
     prompts_path: str = "configs/shanghai_street.json",
     output_dir: str = "/content/drive/MyDrive/MiniMax_Outputs/shanghai_street",
     comfy_root: str = "/content/ComfyUI",
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Test Shanghai Street Scene with Audio MP4")
     parser.add_argument("--shots", type=int, default=2, choices=[1, 2, 3], help="Number of shots to generate (1=5s, 2=10s, 3=15s)")
     parser.add_argument("--auto-shutdown", action="store_true", help="Automatically unassign Colab runtime after batch finishes")
-    parser.add_argument("--workflow", default="workflows/h3_t2v_pdd8_mp4.json", help="Path to workflow JSON")
+    parser.add_argument("--workflow", default="workflows/h3_t2v_pdd8_production.json", help="Path to workflow JSON")
     parser.add_argument("--prompts", default="configs/shanghai_street.json", help="Path to prompts JSON")
     parser.add_argument("--output", default="/content/drive/MyDrive/MiniMax_Outputs/shanghai_street", help="Output directory in Drive")
     parser.add_argument("--comfy-root", default="/content/ComfyUI", help="ComfyUI root path")

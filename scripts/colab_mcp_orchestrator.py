@@ -172,8 +172,8 @@ async def orchestrate(shots: int = 2, auto_shutdown: bool = True):
             init_cell_ids = extract_all_cell_ids(init_gc_text)
             print(f"📊 初始页面单元格列表 ({len(init_cell_ids)} 个): {init_cell_ids}\n")
 
-            # 读取测试 Notebook 中的代码单元格
-            nb_path = Path("notebooks/test_shanghai_mp4_audio.ipynb")
+            # 读取测试 Notebook 中的代码单元格 (使用规范版本化 v2.0)
+            nb_path = Path("notebooks/v2.0_test_shanghai_street_mp4.ipynb")
             nb_raw_str = nb_path.read_text(encoding="utf-8")
             nb_data = json.loads(nb_raw_str)
 
@@ -189,7 +189,7 @@ async def orchestrate(shots: int = 2, auto_shutdown: bool = True):
                 "import shutil\n"
                 "drive_nb_dir = Path('/content/drive/MyDrive/Colab Notebooks')\n"
                 "drive_nb_dir.mkdir(parents=True, exist_ok=True)\n"
-                f"drive_nb_file = drive_nb_dir / 'test_shanghai_mp4_audio.ipynb'\n"
+                f"drive_nb_file = drive_nb_dir / 'v2.0_test_shanghai_street_mp4.ipynb'\n"
                 f"drive_nb_file.write_text({repr(nb_raw_str)}, encoding='utf-8')\n"
                 "drive_repo_dir = Path('/content/drive/MyDrive/minimax-h3-colab-workflow')\n"
                 "shutil.copytree('/content/minimax-h3-colab-workflow', drive_repo_dir, dirs_exist_ok=True)\n"

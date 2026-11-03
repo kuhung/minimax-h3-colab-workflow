@@ -25,7 +25,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Read workflow and default production story
-wf_mp4_path = PROJECT_ROOT / "workflows" / "h3_t2v_pdd8_mp4.json"
+wf_mp4_path = PROJECT_ROOT / "workflows" / "h3_t2v_pdd8_production.json"
 story_path = PROJECT_ROOT / "configs" / "story_cyber_dawn.json"
 
 wf_data = json.loads(wf_mp4_path.read_text(encoding="utf-8"))
@@ -715,7 +715,7 @@ def build():
         "nbformat": 4,
         "nbformat_minor": 0,
         "metadata": {
-            "colab": {"name": "minimax_h3_l4_production.ipynb", "provenance": [], "gpuType": "L4"},
+            "colab": {"name": "v2.0_minimax_h3_l4_production_mp4.ipynb", "provenance": [], "gpuType": "L4"},
             "kernelspec": {"name": "python3", "display_name": "Python 3"},
             "language_info": {"name": "python"},
             "accelerator": "GPU"
@@ -725,13 +725,10 @@ def build():
 
     nb_str = json.dumps(nb, indent=2, ensure_ascii=False)
     versioned_file = PROJECT_ROOT / "notebooks" / "v2.0_minimax_h3_l4_production_mp4.ipynb"
-    default_file = PROJECT_ROOT / "notebooks" / "minimax_h3_l4_production.ipynb"
     
     versioned_file.parent.mkdir(parents=True, exist_ok=True)
     versioned_file.write_text(nb_str, encoding="utf-8")
-    default_file.write_text(nb_str, encoding="utf-8")
-    print(f"🎉 成功生成带版本号 Production Notebook: {versioned_file}")
-    print(f"🎉 成功同步默认入口 Production Notebook: {default_file}")
+    print(f"🎉 成功生成版本化 Production Notebook: {versioned_file}")
 
 if __name__ == "__main__":
     build()

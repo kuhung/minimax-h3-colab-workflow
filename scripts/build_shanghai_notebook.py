@@ -21,7 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-WF = json.loads((ROOT / "workflows" / "h3_t2v_pdd8_mp4.json").read_text(encoding="utf-8"))
+WF = json.loads((ROOT / "workflows" / "h3_t2v_pdd8_production.json").read_text(encoding="utf-8"))
 TASKS = json.loads((ROOT / "configs" / "shanghai_street.json").read_text(encoding="utf-8"))
 
 # Validate 2.0 node topology
@@ -695,7 +695,7 @@ def build():
         "nbformat": 4,
         "nbformat_minor": 0,
         "metadata": {
-            "colab": {"name": "test_shanghai_mp4_audio.ipynb", "provenance": [], "gpuType": "L4"},
+            "colab": {"name": "v2.0_test_shanghai_street_mp4.ipynb", "provenance": [], "gpuType": "L4"},
             "kernelspec": {"name": "python3", "display_name": "Python 3"},
             "language_info": {"name": "python"},
             "accelerator": "GPU"
@@ -705,13 +705,10 @@ def build():
 
     nb_str = json.dumps(nb, indent=2, ensure_ascii=False)
     versioned_file = ROOT / "notebooks" / "v2.0_test_shanghai_street_mp4.ipynb"
-    default_file = ROOT / "notebooks" / "test_shanghai_mp4_audio.ipynb"
 
     versioned_file.parent.mkdir(parents=True, exist_ok=True)
     versioned_file.write_text(nb_str, encoding="utf-8")
-    default_file.write_text(nb_str, encoding="utf-8")
-    print(f"🎉 成功生成带版本号上海街景 Notebook: {versioned_file}")
-    print(f"🎉 成功同步默认入口上海街景 Notebook: {default_file}")
+    print(f"🎉 成功生成版本化上海街景 Notebook: {versioned_file}")
 
 if __name__ == "__main__":
     build()
