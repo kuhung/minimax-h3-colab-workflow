@@ -80,7 +80,8 @@ flowchart TD
 - 📋 [configs/prompts.example.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/prompts.example.json) — 任务排期模板（已对齐 124 帧）。
 - 📋 [configs/story_cyber_dawn.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/story_cyber_dawn.json) — 短视频分镜剧本案例（《极客破晓：硅基脉动》，8 镜头成片流水线）。
 - 📋 [configs/shanghai_street.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/shanghai_street.json) — 上海街景 3 镜案例。
-- 🗺️ [docs/ROADMAP.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/ROADMAP.md) — **研发路线图**（定义 5 大里程碑：基础可行性、参考图强约束攻坚、低摩擦体验打磨、开源宣发与进阶扩展）。
+- 🗺️ [docs/ROADMAP.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/ROADMAP.md) — **研发路线图**（定义敏捷发布、宣发与参考图迭代计划）。
+- 📑 [docs/REFERENCES.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/REFERENCES.md) — **开源借鉴清单与技术吸收明细**（吸收 Turbo LoRA、多图路由、表单输入抽象与官方节点标准）。
 - 📖 [docs/COLAB_MCP_INTEGRATION.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/COLAB_MCP_INTEGRATION.md) — Colab MCP 深度集成与 Agent 全自动化托管操作手册。
 - 📖 [docs/PROMPT_RECIPES.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/PROMPT_RECIPES.md) — 官方原生结构化多镜头语法与 10 大风格 Embedding 指南。
 - 📚 [docs/RESEARCH_SUMMARY.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/RESEARCH_SUMMARY.md) — 全网五大方案横评与 2.0 核心性能避坑指南。
