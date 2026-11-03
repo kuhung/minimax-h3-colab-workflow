@@ -116,7 +116,8 @@ def run_shanghai_test(
             server_url="http://127.0.0.1:8188",
             comfy_output_dir=str(comfy_path / "output"),
             timeout_per_shot=600,
-            tasks_list=target_tasks
+            tasks_list=target_tasks,
+            active_models=active_files,
         )
     finally:
         total_batch_time = round(time.time() - t_batch_start, 2)

@@ -40,19 +40,39 @@
 
 | 对比维度 | 本仓库 2.0 (`minimax-h3-colab-workflow`) | `killkli/minimax-h3-colab-skill` | 官方模板 (`Comfy-Org/workflow_templates`) | `modelscope/DiffSynth-Studio` | `MiniMax_H3_on_Colab_T4` (Gist) |
 |---|---|---|---|---|---|
-| **采样拓扑** | **`BasicGuider` (单路无 CFG, CFG=1.0)** | `BasicGuider` (单路无 CFG) | `BasicGuider` (单路无 CFG) | 框架原生 Pipeline | `KSampler` (双路 CFG=3.0) |
+| **输入模式** | **纯文本 T2VA 原生批量出片（无脸视频工业流）** | ⚠️ **强制要求上传 1~9 张参考图/首帧图** (无法纯文本批量出片) | 基础图生视频 / 文生视频演示 | 纯 Python 代码脚本调用 | 单图/单提示词交互式运行 |
+| **采样拓扑** | **`BasicGuider` (单路无 CFG, CFG=1.0)** | `BasicGuider` (单路无 CFG) | `BasicGuider` (单路无 CFG) | 框架内置 Pipeline | `KSampler` (双路 CFG=3.0) |
 | **DiT 前向次数 (8步)** | **精确 8 次（零多余算力浪费）** | 精确 8 次 | 精确 8 次 | 8 次 | 16 次（正负双路，耗时翻倍） |
-| **CUDA 与量化自适应** | **自动检测：cu130 走 `int8_convrot`；cu12x + L4 走 `fp8_scaled`** | 仅支持固定权重 | 需手动修改 JSON 节点 | 需手动改脚本 | 强行在 T4 上跑（必崩） |
-| **音画同出 (MP4)** | **原生 32kHz 双声道立体声 MP4** | 仅 WebP / 需自配音频 | 仅基础 T2V 演示 | 支持音视频分离 | 仅 GIF/WEBP |
-| **节点契约校验** | **动态 `/object_info` 预检与参数自适应裁剪** | 有 `/object_info` 检查 | 无校验 | 框架内置 | 无校验 |
-| **帧数网格对齐** | **强制向上对齐 `17k + 5` (杜绝报错)** | 手动指定 | 手动指定 | 手动指定 | 随意填写（引发时域伪影） |
-| **Google Colab AUP 合规** | **100% 官方原生挂载，零第三方守护** | 需配置环境 | 无 Colab SOP | 仅本地脚本 | 易遭封号拦截 |
-| **自动化防扣费守门员** | **三重保护：finally 销毁 + 算力看门狗熔断 + Agent主动断开** | 无看门狗 | 无关机机制 | 无 | 无 |
-| **多镜头剧本编排** | **官方原生结构化多镜头语法解析器 (`format_h3_prompt`)** | 仅支持单段 Prompt | 仅单条文本 | 代码传参 | 仅单条文本 |
+| **CUDA 与量化自适应** | **自动检测：cu130 走 `int8_convrot`；cu12x + L4 走 `fp8_scaled`** | 支持环境变量切换 `int8`/`fp8`/`bf16` | 仅固定模板权重 | 默认拉取全精度 Text Encoder (60GB+)，依赖磁盘卸载 | 依赖 3 阶段内存拆分强跑 T4 |
+| **音画同出 (MP4)** | **原生 32kHz 双声道立体声 MP4 (`CreateVideo`+`SaveVideo`)** | 支持 MP4 (依赖第三方 `ComfyUI-VideoHelperSuite` 插件) | 基础视频保存 | 支持音视频分离输出 | 仅 WebP/GIF (无原生音频合流) |
+| **插件依赖性** | **100% ComfyUI 官方原生内置节点 (零第三方插件)** | 依赖第三方扩展 `ComfyUI-VideoHelperSuite` | 官方原生内置 | 需安装独立 DiffSynth 库 | 需安装自定义插件 |
+| **Google Drive 缓存** | **官方原生挂载，原子缓存与 0 秒软链接秒开** | ❌ **无 Drive 缓存机制**（每次新建会话需重下 40GB 权重） | 无云端持久化设计 | 无云盘缓存集成 | 无云端持久化设计 |
+| **节点契约校验** | **动态 `/object_info` 预检与参数自适应裁剪** | 支持 `/object_info` 契约校验 | 无校验 | 框架内置 | 无校验 |
+| **帧数网格对齐** | **强制向上对齐 `17k + 5` (精确公式)** | 依赖用户自行输入 | 手动指定 | 手动指定 | 随意填写（引发时域断裂伪影） |
+| **硬件与防扣费守门** | **锁定 L4 (1.9 CU/h) + 三重守门 (finally+Watchdog+Agent)** | 默认绑死高价 A100，支持 `colab stop` 但无线程级看门狗 | 无关机与防扣费机制 | 无关机机制 | 跑在 T4 (单片耗时 35 分钟+，无生产力) |
 
 ---
 
-### 2. 三大核心性能与版本避坑指南
+### 2. 开源竞品方案深度源码级剖析
+
+1. **`killkli/minimax-h3-colab-skill` 源码级事实分析**：
+   - **优势**：同样采用了单路无 CFG 的 `BasicGuider` 拓扑，具备 CUDA 量化感知与 `/object_info` 契约校验能力，并实现了基于 `VHS_VideoCombine` 的 MP4 导出。
+   - **核心缺陷**：
+     - ① **强制要求上传参考图**：工作流强依赖外部图片输入（1~9 张首尾帧或风格图），无法直接基于分镜文本批量生成纯原创无脸视频；
+     - ② **缺乏持久化缓存**：每次启动必须耗时数十分钟从 HuggingFace 重新拉取 40GB+ 权重，无法在 Colab 频繁断连下复用 Drive 缓存；
+     - ③ **依赖第三方自定义节点**：依赖 `ComfyUI-VideoHelperSuite`，增加了扩展编译与安装失败风险（本仓库 2.0 采用 ComfyUI 原生 `CreateVideo` + `SaveVideo` 实现零第三方插件依赖）；
+     - ④ **算力浪费严重**：默认绑死单价昂贵的 A100 运行时，且无后台线程级算力看门狗熔断保护。
+
+2. **`modelscope/DiffSynth-Studio` 源码级事实分析**：
+   - 其 `model_inference_low_vram` 默认拉取 `MiniMax/MiniMax-H3` 官方全精度 Qwen3-VL 文本编码器（体量高达 60GB+），并依赖 `"offload_device": "disk"` 进行磁盘分页卸载。在 Google Colab 的虚拟磁盘 IO 瓶颈下，每次前向传播频繁触发磁盘吞吐颠簸，整体出片耗时远慢于 ComfyUI 结合 AWQ `NVFP4` (14.6GB) 的常驻显存流水线。
+
+3. **`MiniMax_H3_on_Colab_T4.ipynb` (Gist) 源码级事实分析**：
+   - 针对免费版 Colab T4（16GB VRAM, 12.7GB Host RAM）设计，采用极端的**三阶段独立子进程架构**（阶段 1：子进程执行文本编码并落盘退出以清空内存；阶段 2：子进程加载 DiT 执行去噪并落盘退出；阶段 3：子进程加载 VAE 执行解码）。
+   - 由于 T4 算力仅 7.5（不支持硬件量化指令加速），且进程反复初始化与全量张量落盘带来了巨大的系统开销，**单片生成耗时超过 35 分钟**，完全不具备工业级批量生产可行性。
+
+---
+
+### 3. 三大核心性能与版本避坑指南
 
 #### 💡 避坑 1：为什么 Pruned + Turbo 严禁使用 `KSampler (cfg=3.0)`，必须用 `BasicGuider (cfg=1.0)`？
 - **数学与架构机理**：MiniMax 官方开源的 `minimax_h3_fl2va_pruned_*` 模型与配套的 Turbo LoRA 属于 **CFG-Distilled（无分类器引导蒸馏）模型**。模型在蒸馏训练阶段已经将 Prompt 文本向量强条件内化到单次扩散漂移场中。

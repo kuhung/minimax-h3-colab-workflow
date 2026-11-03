@@ -412,11 +412,9 @@ ALL_TASKS = json.loads(r"""__TASKS_JSON__""")
 TASKS = ALL_TASKS[:max(1, min(int(NUM_SHOTS), len(ALL_TASKS)))]
 
 def align_frame_count(n: int) -> int:
-    """对齐帧数至 17k + 5 网格"""
-    if n <= 5:
-        return 22
-    k = max(1, (n - 5 + 16) // 17)
-    return 17 * k + 5
+    """对齐帧数至 17k + 5 网格 (nodes_minimax_h3.py 官方公式)"""
+    n = max(5, int(n))
+    return n + (5 - n % 17) % 17
 
 def format_h3_prompt(task: dict) -> str:
     """组装官方结构化多镜头提示词"""
@@ -432,14 +430,21 @@ def format_h3_prompt(task: dict) -> str:
         shot_lines = []
         for i, s in enumerate(shots, 1):
             if isinstance(s, dict):
-                t_str = s.get("time", f"00:{((i-1)*5):02d}.000")
+                t_str = s.get("time")
                 desc = s.get("description", s.get("prompt", ""))
-                shot_lines.append(f"[Shot {i}] At {t_str}, {desc}")
+                if i == 1 and (not t_str or t_str == "00:00.000" or t_str == "0"):
+                    shot_lines.append(f"[Shot 1] {desc}")
+                else:
+                    t_val = t_str if t_str else f"00:{((i-1)*5):02d}.000"
+                    shot_lines.append(f"[Shot {i}] At {t_val}, {desc}")
             else:
-                shot_lines.append(f"[Shot {i}] {s}")
-        parts.append("integrated_multimodal_description: " + " ".join(shot_lines))
+                if i == 1:
+                    shot_lines.append(f"[Shot 1] {s}")
+                else:
+                    shot_lines.append(f"[Shot {i}] At 00:{((i-1)*5):02d}.000, {s}")
+        parts.append("integrated_multimodal_description:\n" + "\n".join(shot_lines))
     elif task.get("prompt"):
-        parts.append(f"integrated_multimodal_description: {task['prompt']}")
+        parts.append(f"integrated_multimodal_description:\n{task['prompt']}")
     if soundscape:
         parts.append(f"overall_soundscape: {soundscape}")
     if music:

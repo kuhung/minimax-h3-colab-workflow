@@ -205,7 +205,7 @@ def run_agent_workflow(
         # 2. 安装与挂载
         print("\n[阶段 2/5] 准备 ComfyUI 环境与模型权重...")
         ensure_comfyui_installed(comfy_path)
-        download_or_link(
+        active_files = download_or_link(
             comfy_path,
             drive_cache_path,
             variant=variant,
@@ -224,7 +224,8 @@ def run_agent_workflow(
             output_dir=output_dir,
             server_url="http://127.0.0.1:8188",
             comfy_output_dir=str(comfy_path / "output"),
-            timeout_per_shot=timeout_per_shot
+            timeout_per_shot=timeout_per_shot,
+            active_models=active_files
         )
 
         # 5. 校验成片

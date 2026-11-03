@@ -54,29 +54,31 @@ non_diegetic_music:
 
 ---
 
-## 二、 官方 10 大风格 Embedding（`embedding:minimaxh3_*`）
+## 二、 官方 10 大原生特效与运镜 Embedding（`embedding:minimaxh3_*`）
 
-MiniMax 官方提供了针对 H3 调优的原生风格 Embedding 触发词。在 Prompt 中加入以下 embedding 标记可直接唤醒特定视觉质感：
+MiniMax 官方在 HuggingFace 仓库 `Comfy-Org/MiniMax-H3/tree/main/embeddings` 中发布了 10 个官方原生微调的视觉特效与运镜 Embedding 文件（需存放在 `ComfyUI/models/embeddings/` 目录下调用）。在 Prompt 中输入对应触发词即可唤醒特定的高难度电影级特效或转场运镜：
 
-| 风格 Embedding | 视觉风格定义 | 最佳应用场景 |
-|---|---|---|
-| `embedding:minimaxh3_cinematic` | 电影级胶片质感、宽动态范围、变形宽银幕光斑 | 剧情短片、科技宣传片、大片感建立镜头 |
-| `embedding:minimaxh3_cyberpunk` | 高饱和赛博霓虹、夜雨倒影、冷暖对比光 | 赛博朋克都市、未来科技、数据中心 |
-| `embedding:minimaxh3_documentary` | 真实自然纪实感、柔和自然光散射、低调色感 | 市井烟火、弄堂老街、人文微观察 |
-| `embedding:minimaxh3_macro` | 极浅景深、微米级材质表面纹理反射、边缘圆润光斑 | 芯片电路、咖啡油脂拉花、机械键盘轴体 |
-| `embedding:minimaxh3_anime` | 新海诚风日式动画光影、高透明感天际线 | 二次元概念场景、青春唯美风 |
-| `embedding:minimaxh3_noir` | 经典黑白黑色电影、高反差明暗对比（Chiaroscuro） | 悬疑犯罪、侦探推理、戏剧性独白 |
-| `embedding:minimaxh3_vintage` | 复古 80 年代胶片噪点、微弱色相偏置、暖黄色调 | 怀旧记忆、老上海风情、复古黑胶 |
-| `embedding:minimaxh3_hyperlapse` | 丝滑大范围移动延时、光轨流动与云卷云舒 | 都市车流、天际线日出日落、长跨度穿梭 |
-| `embedding:minimaxh3_nature` | 自然纪录片质感（BBC 风格）、高动态绿色生机 | 森林晨雾、雪山航拍、海浪拍岸 |
-| `embedding:minimaxh3_commercial` | 现代高端商业静物广告、无暇洁净布光、超清晰反光 | 消费电子、腕表首饰、美妆工业品 |
+| 官方 Embedding 触发词 | 精确文件大小 | 核心视觉动力学 / 特效定义 | 典型应用场景 |
+|---|---|---|---|
+| `embedding:minimaxh3_bullet_time` | `962,680` 字节 | 经典黑客帝国「子弹时间」，画面主体极慢速甚至冻结，摄像机高速多角度环绕旋转 | 动作高潮、微距水滴凝滞、科技悬停展示 |
+| `embedding:minimaxh3_spiral_ascent` | `1,341,560` 字节 | 螺旋升降镜头（Corkscrew / Spiral Crane），摄像机沿垂直中轴螺旋盘旋上升 | 宏大建筑俯瞰、深林树冠升腾、都市巡航 |
+| `embedding:minimaxh3_kiss_camera` | `993,400` 字节 | 双人近景推进、情侣亲吻特写、电影感浪漫景深对焦 | 剧情短片情感节点、婚礼与浪漫叙事 |
+| `embedding:minimaxh3_four_seasons` | `1,454,200` 字节 | 四季更替流转（春夏秋冬植被色彩与天候快速渐变） | 时间流逝蒙太奇、自然景观岁月感呈现 |
+| `embedding:minimaxh3_blooming_flowers` | `1,259,640` 字节 | 花卉花瓣延时绽放（Time-lapse Blooming），细微脉络舒展 | 植物生长延时、微观生命力、治愈系自然短片 |
+| `embedding:minimaxh3_art_is_explosion` | `512,120` 字节 | 戏剧性爆炸冲击波与尘埃碎片散射（Art is Explosion） | 动作大片特效、微观能量释放、科幻引爆 |
+| `embedding:minimaxh3_fire_breath` | `1,208,440` 字节 | 烈焰喷吐与高温火舌等离子体流体粒子动态 | 奇幻生物吐息、工业熔炉喷火、魔法对决 |
+| `embedding:minimaxh3_dark_magic` | `604,280` 字节 | 暗黑暗物质魔法能量流、紫黑雾气缭绕消散 | 奇幻暗黑世界观、神秘科技失控 |
+| `embedding:minimaxh3_storm_magic` | `1,403,000` 字节 | 暴风雨闪电交加、电弧激荡与狂暴气流旋涡 | 极端天候灾难、雷电能量激发、风暴降临 |
+| `embedding:minimaxh3_truman_show` | `921,720` 字节 | 「楚门的世界」式世界观撕裂、现实解构与穹顶窥视感 | 哲学思考、虚拟现实破壁、反乌托邦剧情 |
+
+> 💡 **使用提示**：无脸视频日常生产一般依赖纯 Prompt 描述即可出高质感成片；如需特定特效（如打字微距子弹时间冻结、航拍螺旋上升），可下载对应 `.safetensors` 至 `models/embeddings/` 并在提示词中添加触发词。
 
 ---
 
 ## 三、 无脸视频（Faceless Video）经典三段式公式
 
 ```
-[主体与材质细节] + [镜头运动与光影质感] + [环境声音与拟声音效] + [风格 Embedding]
+[主体与材质细节] + [镜头运动与光影质感] + [环境声音与拟声音效]
 ```
 
 ### 1. 主体与视觉细节（Visual Subject）
@@ -107,23 +109,26 @@ MiniMax 官方提供了针对 H3 调优的原生风格 Embedding 触发词。在
 
 ### 配方 1：极客破晓 / 算力心脏（Tech & Data Center）
 - **Prompt**:
-  > integrated_multimodal_description: [Shot 1] At 00:00.000, cinematic slow forward dolly tracking shot moving through an endless corridor of high-density AI server racks. Blue and amber LED activity lights flickering rhythmically in deep shadows. Volumetric cold mist and cryo-cooling vapor drifting across the floor grates. embedding:minimaxh3_cinematic
+  > integrated_multimodal_description:
+  > [Shot 1] Cinematic slow forward dolly tracking shot moving through an endless corridor of high-density AI server racks. Blue and amber LED activity lights flickering rhythmically in deep shadows. Volumetric cold mist and cryo-cooling vapor drifting across the floor grates.
   >
   > overall_soundscape: Deep industrial bass hum of ventilation fans, intermittent electronic beep echoes in an enclosed server hall, faint acoustic hiss of cold cooling vapor.
   >
   > non_diegetic_music: Low-frequency futuristic ambient drone, dark and focused.
-- **推荐规格**：960×544，124 帧（5.16 秒），Turbo 8 步。
+- **推荐规格**：960×544，124 帧（5.16 秒），Turbo 8 步。*(可选：如需环绕旋转，可追加 `embedding:minimaxh3_bullet_time`)*
 
 ### 配方 2：上海街景 / 弄堂生煎早市（Shanghai Lane & Food Macro）
 - **Prompt**:
-  > integrated_multimodal_description: [Shot 1] At 00:00.000, cinematic close-up macro shot in an old Shanghai lane alley in front of a Shikumen red brick archway. A traditional cast-iron flat pan sizzling with round shengjian mantou buns, crispy golden-brown sesame bottoms, sprinkled with chopped green scallions. Dense fragrant white steam clouds rising softly in the cool dawn light. embedding:minimaxh3_documentary
+  > integrated_multimodal_description:
+  > [Shot 1] Cinematic close-up macro shot in an old Shanghai lane alley in front of a Shikumen red brick archway. A traditional cast-iron flat pan sizzling with round shengjian mantou buns, crispy golden-brown sesame bottoms, sprinkled with chopped green scallions. Dense fragrant white steam clouds rising softly in the cool dawn light.
   >
   > overall_soundscape: Crisp high-frequency sizzling of frying buns in hot oil, gentle iron lid clinking, distant charming acoustic chime of a vintage bicycle bell echoing down the narrow lane.
 - **推荐规格**：960×544，124 帧，Turbo 8 步。
 
 ### 配方 3：极简办公 / 深度心流（Deep Work & ASMR）
 - **Prompt**:
-  > integrated_multimodal_description: [Shot 1] At 00:00.000, top-down bird-eye view of a minimalist dark walnut desk. Slender anonymous hands swiftly typing on a custom mechanical keyboard with brass plate. In the corner, steam gracefully rising from a handmade ceramic coffee mug. Soft natural morning dawn light pouring in through blinds. embedding:minimaxh3_macro
+  > integrated_multimodal_description:
+  > [Shot 1] Top-down bird-eye view of a minimalist dark walnut desk. Slender anonymous hands swiftly typing on a custom mechanical keyboard with brass plate. In the corner, steam gracefully rising from a handmade ceramic coffee mug. Soft natural morning dawn light pouring in through blinds.
   >
   > overall_soundscape: Crisp tactile mechanical switch clacking with satisfying solid bottom-out sound, subtle sleeve cloth rustle, quiet room morning silence.
 - **推荐规格**：960×544 或 1344×768，124 帧，Turbo 8 步。
