@@ -127,7 +127,7 @@ python scripts/agent_colab_runner.py \
 | **1. 浏览器必须保持存活** | `colab-mcp` 依赖 Chrome 标签页作为 WebSocket 节点，不能脱离浏览器运行。 | Agent 调起浏览器后，用户保持 Chrome 窗口打开（可最小化或后台运行），不可关闭该 Colab 标签页。首次挂载 Drive 时需在网页端完成权限弹窗确认。 |
 | **2. GPU 运行时初始分配** | Colab 默认新建的空白笔记本可能是 CPU 或 T4。 | 用户首次连接时需确认一次：`代码执行程序 -> 更改运行时类型 -> L4 GPU (高内存)`。Agent 脚本会在第一时间检测算力能力，若非 L4/A100 会立即熔断并关机。 |
 | **3. 长时间去噪的超时问题** | 渲染一个批量任务需 20~40 分钟，若 MCP 单次调用 `execute_cell` 一直阻塞等待，可能会遭遇客户端网络超时。 | **推荐异步执行**：Agent 发起 `nohup python -u scripts/agent_colab_runner.py ... > /content/runner.log 2>&1 &`，随后定期读取 `tail -n 20 /content/runner.log` 汇报进度。 |
-| **4. 算力单元防闲置** | 实测 L4 费率确认为 1.90 CU/h，单镜仅 0.16 CU。Pro 方案送 100 CU/月（90天可囤至 300 CU），Ultra 方案送 500 CU/月。 | 坚决开启 `--auto-shutdown` 与 `--watchdog-hours` 参数，双保险依赖 `runtime.unassign()` 保证出片完毕或超时即关机，保卫宝贵额度。 |
+| **4. 算力单元防闲置** | 实测 L4 费率确认为 1.94 CU/h，单镜仅约 0.089 CU。Pro 方案送 100 CU/月（90天可囤至 300 CU），Ultra 方案送 500 CU/月。 | 坚决开启 `--auto-shutdown` 与 `--watchdog-hours` 参数，双保险依赖 `runtime.unassign()` 保证出片完毕或超时即关机，保卫宝贵额度。 |
 
 ---
 

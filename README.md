@@ -29,11 +29,11 @@
 flowchart TD
     A["Google AI Pro/Ultra 账号 (100~500 CU/月，90天有效期)"] --> B["Colab 硬件门禁检测 (check_gpu.py)"]
     B -->|T4 (算力 7.5)| C["❌ 立即中断并销毁实例，防扣费"]
-    B -->|L4 (24GB) 算力 8.9| D["✅ 硬件通过 (实测 1.9 CU/h)"]
+    B -->|L4 (24GB) 算力 8.9| D["✅ 硬件通过 (实测 1.94 CU/h)"]
     D --> E["CUDA 自适应挂载 (cu130: int8_convrot / cu12x: fp8_scaled)"]
     E --> F["ComfyUI 后台守护启动 (低显存卸载模式)"]
     F --> G["/object_info 节点契约预检 (14 类核心节点)"]
-    G --> H["2.0 单路无 CFG 批处理 (BasicGuider, 8步/4步 Turbo, ~150s/镜)"]
+    G --> H["2.0 单路无 CFG 批处理 (BasicGuider, 8步 Turbo, 稳态 165s/镜)"]
     H --> I["产物落盘: Google Drive (.mp4 视频 + 32kHz 原生立体声 + 日志)"]
     I --> J["🛑 三重关机保护: finally 销毁 + Watchdog 看门狗 (杜绝闲置扣费)"]
 ```
@@ -65,10 +65,11 @@ flowchart TD
 
 ## 📁 仓库目录结构
 
-- 📓 [notebooks/v2_0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2_0_minimax_h3_l4_production_mp4.ipynb) — **Colab 生产实测存证笔记本 (2.0)**（含 3 镜 574.6s、稳态 165s/镜、0.303 CU 消耗与音画预览完整日志存证）。
+- 📓 [notebooks/v2_0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2_0_minimax_h3_l4_production_mp4.ipynb) — **Colab 生产实测存证笔记本 (2.0)**（含 3 镜 574.6s、稳态 165s/镜、0.309 CU 消耗与音画预览完整日志存证）。
 - 📓 [notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb) — **Colab 核心生产笔记本模板 (2.0)**（单路无 CFG、自适应权重、直连下载优先 + Drive 容灾回退、看门狗熔断与 HTML5 试听）。
 - 📓 [notebooks/v2.0_test_shanghai_street_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_test_shanghai_street_mp4.ipynb) — **上海街景 10~20s 快速测试笔记本 (2.0)**。
-- 📓 [notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb) — **v1.0 基准跑通笔记本**（已同步统一 Drive 幂等挂载与 NVMe 直连校验机制）。
+- 📓 [notebooks/v1_0_minimax_h3_l4_benchmark_webp.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1_0_minimax_h3_l4_benchmark_webp.ipynb) — **v1.0 基准实测存证笔记本**（含 960x544 315s 与 1344x768 875s 完整存证）。
+- 📓 [notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb) — **v1.0 基准跑通模板笔记本**（已同步统一 Drive 幂等挂载与 NVMe 直连校验机制）。
 - 📓 [notebooks/v1.5_minimax_h3_l4_legacy_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1.5_minimax_h3_l4_legacy_mp4.ipynb) — **v1.5 超时归档笔记本**（旧版双路 CFG=3.0 排错对照）。
 - 🤖 [scripts/agent_colab_runner.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/agent_colab_runner.py) — **Agent 自动化托管执行器**（支持三重防扣费兜底、自适应权重、看门狗熔断）。
 - ⚙️ [scripts/check_gpu.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/check_gpu.py) — **硬件环境门禁脚本**（严格校验计算能力 ≥ 8.0、显存与磁盘；支持不达标立即销毁）。
@@ -79,6 +80,7 @@ flowchart TD
 - 📋 [configs/prompts.example.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/prompts.example.json) — 任务排期模板（已对齐 124 帧）。
 - 📋 [configs/story_cyber_dawn.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/story_cyber_dawn.json) — 短视频分镜剧本案例（《极客破晓：硅基脉动》，8 镜头成片流水线）。
 - 📋 [configs/shanghai_street.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/shanghai_street.json) — 上海街景 3 镜案例。
+- 🗺️ [docs/ROADMAP.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/ROADMAP.md) — **研发路线图**（定义 5 大里程碑：基础可行性、参考图强约束攻坚、低摩擦体验打磨、开源宣发与进阶扩展）。
 - 📖 [docs/COLAB_MCP_INTEGRATION.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/COLAB_MCP_INTEGRATION.md) — Colab MCP 深度集成与 Agent 全自动化托管操作手册。
 - 📖 [docs/PROMPT_RECIPES.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/PROMPT_RECIPES.md) — 官方原生结构化多镜头语法与 10 大风格 Embedding 指南。
 - 📚 [docs/RESEARCH_SUMMARY.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/RESEARCH_SUMMARY.md) — 全网五大方案横评与 2.0 核心性能避坑指南。
@@ -89,7 +91,7 @@ flowchart TD
 
 | 规则 | 2.0 实测数据与规范说明 |
 |---|---|
-| **1. 算力费率与实测生产成本** | **L4 实测费率 1.90 CU/h。2.0 架构消除 CFG 双倍计算后，实测单镜冷启 243.5s、稳态仅需 165.4 秒（2分45秒），3 镜仅消耗 0.303 CU！单镜稳态算力成本仅 0.087 CU（1 CU 可产出 11.5 镜带音频 MP4）！Pro 方案月产 1,150~3,450 镜，Ultra 月产 5,750~17,250 镜！** |
+| **1. 算力费率与实测生产成本** | **L4 实测费率 1.94 CU/h。2.0 架构消除 CFG 双倍计算后，实测单镜冷启 243.5s、稳态仅需 165.4 秒（2分45秒），3 镜仅消耗 0.309 CU！单镜稳态算力成本低至 0.089 CU（1 CU 可稳定产出 11.2 镜带音频 MP4）！Pro 方案月产 1,120~3,360 镜，Ultra 月产 5,600~16,800 镜！** |
 | **2. 严禁在 T4 上跑** | T4 算力 7.5，不支持量化算子加速，强行跑会立即 OOM 崩溃。门禁脚本自动阻断并调用 `runtime.unassign()` 关机。 |
 | **3. CUDA 12.x 自动用 fp8_scaled** | 在 Colab 默认 CUDA 12.x 环境下，`download_models.py` 与 Notebooks 自动选用 `fp8_scaled` + `video_vae_fp16`，消除 `int8_convrot` 缺少 cu130 算子导致的慢路径回退。 |
 | **4. BasicGuider 单路无 CFG** | 严禁使用 `KSampler (cfg=3.0)`，必须用 `BasicGuider`（CFG=1.0）。防止蒸馏模型伪影与双倍时间浪费。 |

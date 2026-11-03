@@ -649,10 +649,10 @@ for i, task in enumerate(TASKS, 1):
     })
 
 total_batch_time = time.time() - t_batch_start
-cu_spent = 1.9 * (total_batch_time / 3600)
+cu_spent = 1.94 * (total_batch_time / 3600)
 log("\n" + "=" * 68)
 log(f"🎉 全部 {len(RENDER_RESULTS)} 镜批处理完成！总耗时: {total_batch_time:.1f}s ({total_batch_time/60:.2f} 分钟)")
-log(f"⚡ 实际折合算力消耗: ~{cu_spent:.3f} CU (L4 费率 1.90 CU/h)")
+log(f"⚡ 实际折合算力消耗: ~{cu_spent:.3f} CU (L4 费率 1.94 CU/h)")
 log(f"📂 所有成片均已持久化保存在: {DRIVE_OUTPUTS}")
 log("=" * 68)
 '''
