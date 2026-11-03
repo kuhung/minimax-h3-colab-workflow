@@ -93,7 +93,7 @@ flowchart TD
 | **3. CUDA 12.x 自动用 fp8_scaled** | 在 Colab 默认 CUDA 12.x 环境下，`download_models.py` 与 Notebooks 自动选用 `fp8_scaled` + `video_vae_fp16`，消除 `int8_convrot` 缺少 cu130 算子导致的慢路径回退。 |
 | **4. BasicGuider 单路无 CFG** | 严禁使用 `KSampler (cfg=3.0)`，必须用 `BasicGuider`（CFG=1.0）。防止蒸馏模型伪影与双倍时间浪费。 |
 | **5. 采样器首选 res_multistep** | `KSamplerSelect (res_multistep)` + `BasicScheduler (simple)` 在极少步数下提供高阶微分修正，微观动态平滑连贯。 |
-| **6. 缓存完整性与 0 秒软链接** | 模型首次拉取自动原子备份到 Drive 缓存，后续启动 0 秒软链接秒开，双重校验 safetensors 数据边界。 |
+| **6. 直连下载优先 + Drive 容灾回退** | 首选直连 HuggingFace 高速拉取到本地 NVMe（避免 Google Drive FUSE 网络挂载导致几十 MB/s 的读取阻塞与显存饥饿）；仅当 HuggingFace 网络不通时自动触发 Google Drive 容灾回退，同步原子备份。 |
 
 ---
 

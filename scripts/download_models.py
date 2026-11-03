@@ -212,38 +212,19 @@ def download_or_link(
 
         print(f"\n🔍 检查 [{item['name']}] ({exact_bytes / (1024**3):.2f} GiB)...")
 
-        # 1. 优先检查本地已经存在且通过 safetensors 双校验
-        if check_safetensors_file(target_file, exact_bytes):
-            print(f"   ✅ 本地已有完整文件: {target_file.name}")
+        # 1. 优先检查本地 NVMe 是否已有真实物理文件且通过 safetensors 双校验
+        if not target_file.is_symlink() and target_file.is_file() and check_safetensors_file(target_file, exact_bytes):
+            print(f"   ✅ 本地 NVMe 已就绪 (真实物理文件): {target_file.name}")
             continue
 
-        # 若本地存在不完整文件或断链，清除
+        # 若本地存在软链接（如旧版指向 Drive 的软链接）或残损文件，先行清除
         if target_file.is_symlink() or target_file.exists():
             target_file.unlink()
 
-        # 2. 检查 Google Drive 缓存（兼容子目录与平铺目录）
-        cand_drive = None
-        if drive_cache_dir and drive_cache_dir.exists():
-            for cand in [drive_cache_dir / item["subfolder"] / item["filename"], drive_cache_dir / item["filename"]]:
-                if cand.exists():
-                    if check_safetensors_file(cand, exact_bytes):
-                        cand_drive = cand
-                        break
-                    else:
-                        print(f"   🗑️ 检测到 Drive 缓存文件残损 ({cand.name})，正在移除...")
-                        try:
-                            cand.unlink()
-                        except Exception:
-                            pass
-
-        if cand_drive:
-            print(f"   ⚡ 命中 Google Drive 完整缓存，0 秒软链接秒开...")
-            ensure_symlink(cand_drive, target_file)
-            continue
-
-        # 3. 需通过网络从 HuggingFace 官方源拉取
+        # 2. 首选主路径：直接从 HuggingFace 官方源下载至本地高速 NVMe
         repo_file = item.get("repo_file", item["filename"])
-        print(f"   ⬇️  本地与云盘无完整缓存，从 HuggingFace ({item['repo_id']}) 拉取: {repo_file} ...")
+        print(f"   ⬇️  首选主路径: 从 HuggingFace ({item['repo_id']}) 直连下载至本地 NVMe: {repo_file} ...")
+        download_success = False
         try:
             downloaded_path = hf_hub_download(
                 repo_id=item["repo_id"],
@@ -255,18 +236,65 @@ def download_or_link(
             if dl_file.resolve() != target_file.resolve() and dl_file.exists():
                 shutil.move(str(dl_file), str(target_file))
 
-            if not check_safetensors_file(target_file, exact_bytes):
-                raise RuntimeError(f"下载文件完整性校验失败: {target_file.name}")
-            print(f"   ✅ 下载完成并通过完整性校验: {target_file.name}")
+            if check_safetensors_file(target_file, exact_bytes):
+                print(f"   ✅ HuggingFace 下载完成并通过完整性校验: {target_file.name}")
+                download_success = True
 
-            # 4. 同步原子备份到 Drive 缓存
+                # 3. 同步原子备份至 Drive 容灾缓存（不阻断主流程）
+                if drive_cache_dir and drive_cache_dir.exists():
+                    drive_target = drive_cache_dir / item["subfolder"] / item["filename"]
+                    if not drive_target.exists() or not check_safetensors_file(drive_target, exact_bytes):
+                        atomic_backup_to_drive(target_file, drive_target, exact_bytes)
+            else:
+                print(f"   ⚠️ 下载文件完整性校验未通过: {target_file.name}")
+                if target_file.exists():
+                    target_file.unlink()
+        except Exception as dl_err:
+            print(f"   ⚠️ HuggingFace 直连下载受阻或网络不通: {dl_err}")
+            if target_file.is_symlink() or target_file.exists():
+                try:
+                    target_file.unlink()
+                except Exception:
+                    pass
+
+        # 4. 容灾兜底回退：仅当 HuggingFace 直连下载失败时，尝试从 Google Drive 缓存恢复
+        if not download_success:
+            print(f"   🔄 触发容灾回退: 尝试从 Google Drive 缓存检索可用备份: {item['filename']} ...")
+            cand_drive = None
             if drive_cache_dir and drive_cache_dir.exists():
-                drive_target = drive_cache_dir / item["subfolder"] / item["filename"]
-                atomic_backup_to_drive(target_file, drive_target, exact_bytes)
-        except Exception as e:
-            print(f"   ❌ 下载失败: {e}")
-            print(f"   💡 若连接 HuggingFace 慢，可尝试设置镜像: export HF_ENDPOINT=https://hf-mirror.com")
-            raise
+                for cand in [drive_cache_dir / item["subfolder"] / item["filename"], drive_cache_dir / item["filename"]]:
+                    if cand.exists():
+                        if check_safetensors_file(cand, exact_bytes):
+                            cand_drive = cand
+                            break
+                        else:
+                            print(f"   🗑️ 检测到 Drive 缓存文件残损 ({cand.name})，正在移除...")
+                            try:
+                                cand.unlink()
+                            except Exception:
+                                pass
+
+            if cand_drive:
+                print(f"   ⚡ 命中 Google Drive 完整缓存: {cand_drive}")
+                copied = False
+                try:
+                    print(f"   📦 正在从 Drive 物理拷贝至本地 NVMe (避免 FUSE 显存饥饿延迟)...")
+                    shutil.copy2(cand_drive, target_file)
+                    if check_safetensors_file(target_file, exact_bytes):
+                        copied = True
+                        print(f"   ✅ 从 Drive 物理拷贝完成: {target_file.name}")
+                except Exception as copy_err:
+                    print(f"   ⚠️ 物理拷贝失败 ({copy_err})，降级为软链接...")
+                    if target_file.exists():
+                        target_file.unlink()
+
+                if not copied:
+                    ensure_symlink(cand_drive, target_file)
+            else:
+                raise RuntimeError(
+                    f"❌ 无法就绪模型组件 [{item['name']}]: HuggingFace 直连下载失败且 Google Drive 无有效备份！"
+                    f"\n   建议检查网络连接或设置镜像: export HF_ENDPOINT=https://hf-mirror.com"
+                )
 
     # 建立向后兼容别名软链接
     aliases = [

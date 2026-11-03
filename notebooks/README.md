@@ -47,6 +47,7 @@
 1. **单路无 CFG 架构 (`BasicGuider`, CFG=1.0)**：Turbo LoRA 模型属于蒸馏模型，官方原生拓扑仅需单路正向提示词。**DiT 前向传播次数由 16 次直接减半为 8 次**，计算量节省 50%！这部分节省出来的算力完全抵消了音频处理开销。
 2. **锁定 L4 黄金规格 960x544**：画质足以满足 1080p 手机端竖屏/横屏展示，帧数 124 帧严格满足 17k+5 网格对齐。
 3. **CUDA 自适应量化选择**：检测到 Colab 默认 CUDA 12.x 时自动加载 `minimax_h3_fl2va_pruned_fp8_scaled.safetensors`，杜绝慢路径。
+4. **直连高速下载优先 + Drive 容灾回退**：首选直接从 HuggingFace 官方源拉取到本地高速 NVMe（Colab 宽带高达数百 MB/s），彻底消除从 Google Drive 软链接读取时 FUSE 虚拟网盘仅 20MB/s 导致显存饥饿等待数分钟的痛点；仅当 HuggingFace 网络受阻时自动触发 Drive 容灾回退。
 
 ---
 

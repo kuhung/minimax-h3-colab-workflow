@@ -182,7 +182,7 @@ subprocess.run([sys.executable, "-m", "pip", "install", "-q", "av", "huggingface
 log("✅ ComfyUI 核心与 PyAV 依赖就绪！")
 '''
 
-CELL_MODELS = r'''# ==================== 5. 模型校验与秒级挂载 (精确字节 + 硬件自适应) ====================
+CELL_MODELS = r'''# ==================== 5. 模型挂载与直连高速下载 (直连优先 + Drive 容灾回退) ====================
 import struct
 from huggingface_hub import hf_hub_download
 
@@ -272,62 +272,90 @@ for rel_path, subfolder, exact_bytes in MODELS_SPEC:
     drive_sub_file = DRIVE_MODELS / subfolder / fname
     drive_flat_file = DRIVE_MODELS / fname
 
-    if local_file.is_symlink():
-        local_file.unlink()
-
-    # 1. 本地已存在完整文件
-    if check_safetensors_file(local_file, exact_bytes):
-        log(f"   ✅ 本地完整就绪: {fname} ({exact_bytes / (1024**3):.2f} GiB)")
+    # 1. 检查本地 NVMe 是否已有真实物理文件且通过完整性校验
+    if not local_file.is_symlink() and local_file.is_file() and check_safetensors_file(local_file, exact_bytes):
+        log(f"   ✅ 本地 NVMe 高速缓存已就绪 (真实物理文件): {fname} ({exact_bytes / (1024**3):.2f} GiB)")
         continue
 
-    # 2. 若本地存在不完整文件，彻底清理
-    if local_file.exists():
-        log(f"   🗑️ 清理本地残损文件: {fname}")
+    # 若本地是软链接或残损文件，先清除，确保后续获得本地高速物理文件
+    if local_file.is_symlink() or local_file.exists():
         local_file.unlink()
 
-    # 3. 检查 Google Drive 缓存中是否有完整文件
-    cand_drive = None
-    for cand in [drive_sub_file, drive_flat_file]:
-        if cand.exists():
-            if check_safetensors_file(cand, exact_bytes):
-                cand_drive = cand
-                break
-            else:
-                log(f"   🗑️ 清理 Drive 残损缓存: {cand.name}")
-                try:
-                    cand.unlink()
-                except Exception:
-                    pass
-
-    if cand_drive:
-        local_file.symlink_to(cand_drive.resolve())
-        log(f"   ⚡ 命中 Drive 完整缓存，0 秒软链接: {fname} -> {subfolder}/")
-        continue
-
-    # 4. 从 HuggingFace 官方拉取
-    log(f"   ⬇️ 本地与 Drive 无有效缓存，从 HuggingFace 下载: {fname} ({exact_bytes / (1024**3):.2f} GiB)...")
-    downloaded = hf_hub_download(
-        repo_id="Comfy-Org/MiniMax-H3",
-        filename=rel_path,
-        local_dir=str(LOCAL_MODELS)
-    )
-    dl_path = Path(downloaded)
-    if dl_path.resolve() != local_file.resolve() and dl_path.exists():
-        shutil.move(str(dl_path), str(local_file))
-
-    if not check_safetensors_file(local_file, exact_bytes):
-        raise RuntimeError(f"从 HuggingFace 下载的文件损坏或不完整: {fname}")
-    log(f"   ✅ 下载并通过安全校验: {fname}")
-
-    # 5. 原子备份至 Drive 缓存目录
+    # 2. 首选主路径：直接从 HuggingFace 官方源下载至本地 NVMe (速度快且杜绝 FUSE 慢读取)
+    log(f"   ⬇️ 首选主路径: 从 HuggingFace 官方拉取至本地 NVMe: {fname} ({exact_bytes / (1024**3):.2f} GiB)...")
+    download_success = False
     try:
-        drive_sub_file.parent.mkdir(parents=True, exist_ok=True)
-        tmp_drive = drive_sub_file.with_suffix(".safetensors.partial")
-        shutil.copyfile(local_file, tmp_drive)
-        tmp_drive.replace(drive_sub_file)
-        log(f"   💾 已原子备份至 Drive 缓存: {drive_sub_file.name}")
-    except Exception as be:
-        log(f"   ⚠️ 备份到 Drive 略过: {be}")
+        downloaded = hf_hub_download(
+            repo_id="Comfy-Org/MiniMax-H3",
+            filename=rel_path,
+            local_dir=str(LOCAL_MODELS),
+            local_dir_use_symlinks=False
+        )
+        dl_path = Path(downloaded)
+        if dl_path.resolve() != local_file.resolve() and dl_path.exists():
+            shutil.move(str(dl_path), str(local_file))
+
+        if check_safetensors_file(local_file, exact_bytes):
+            log(f"   ✅ HuggingFace 直连下载完成并通过校验: {fname}")
+            download_success = True
+
+            # 3. 同步原子备份至 Drive 容灾缓存（不阻断主流程）
+            try:
+                drive_sub_file.parent.mkdir(parents=True, exist_ok=True)
+                if not drive_sub_file.exists() or not check_safetensors_file(drive_sub_file, exact_bytes):
+                    tmp_drive = drive_sub_file.with_suffix(".safetensors.partial")
+                    shutil.copyfile(local_file, tmp_drive)
+                    tmp_drive.replace(drive_sub_file)
+                    log(f"   💾 已同步原子备份至 Drive 容灾缓存: {drive_sub_file.name}")
+            except Exception as be:
+                log(f"   ⚠️ 备份到 Drive 略过: {be}")
+        else:
+            log(f"   ⚠️ HuggingFace 下载文件完整性未通过: {fname}")
+            if local_file.exists():
+                local_file.unlink()
+    except Exception as dl_err:
+        log(f"   ⚠️ HuggingFace 直连下载受阻或网络不通: {dl_err}")
+        if local_file.is_symlink() or local_file.exists():
+            try:
+                local_file.unlink()
+            except Exception:
+                pass
+
+    # 4. 容灾兜底回退：仅当 HuggingFace 直连下载失败时，尝试从 Google Drive 缓存恢复
+    if not download_success:
+        log(f"   🔄 触发容灾回退: 尝试从 Google Drive 检索可用备份: {fname} ...")
+        cand_drive = None
+        for cand in [drive_sub_file, drive_flat_file]:
+            if cand.exists():
+                if check_safetensors_file(cand, exact_bytes):
+                    cand_drive = cand
+                    break
+                else:
+                    log(f"   🗑️ 检测到 Drive 中存在残损半截文件: {cand.name}，正在清理...")
+                    try:
+                        cand.unlink()
+                    except Exception:
+                        pass
+
+        if cand_drive:
+            log(f"   ⚡ 命中 Drive 缓存: {cand_drive.name}")
+            copied = False
+            try:
+                log(f"   📦 正在从 Drive 物理拷贝至本地 NVMe (避免 FUSE 显存饥饿延迟)...")
+                shutil.copy2(cand_drive, local_file)
+                if check_safetensors_file(local_file, exact_bytes):
+                    copied = True
+                    log(f"   ✅ 从 Drive 物理拷贝完成: {fname}")
+            except Exception as ce:
+                log(f"   ⚠️ Drive 物理拷贝失败 ({ce})，降级为软链接...")
+                if local_file.exists():
+                    local_file.unlink()
+
+            if not copied:
+                local_file.symlink_to(cand_drive.resolve())
+                log(f"   🔗 软链接建立: {fname} -> {cand_drive}")
+        else:
+            raise RuntimeError(f"❌ HuggingFace 下载失败且 Google Drive 无有效备份: {fname}！请检查网络连接。")
 
 # 建立向后兼容别名软链接
 aliases = [
