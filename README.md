@@ -10,13 +10,13 @@
 1. **单路无 CFG 架构 (`BasicGuider`, CFG=1.0)**：
    - 彻底废除正负双路 `CLIPTextEncode` + `KSampler (cfg=3.0)` 架构。
    - 采用 `MiniMaxH3ImageToVideo` -> `BasicGuider` -> `SamplerCustomAdvanced` 标准拓扑。
-   - **单镜推理算力直接减半（耗时从 306s 降低至 ~150s）**，彻底消除蒸馏模型在外推 CFG 下的过曝与相位破音。
+   - **单镜推理算力直接减半（实测稳态耗时从 306s 降低至 165s，提速 46%）**，彻底消除蒸馏模型在外推 CFG 下的过曝与相位破音。
 2. **CUDA 与硬件自适应感知路由**：
    - `int8_convrot` 算子依赖 PyTorch `cu130` 与 `comfy-kitchen`；
-   - 脚本自动检测当前环境：若处于 Colab 默认的 CUDA 12.x + L4 (Ada CC 8.9)，自动无缝切换为 `fp8_scaled` (DiT) + `video_vae_fp16` (VAE)，完全释放 Ada 第四代 Tensor Core 硬件吞吐，杜绝非 cu130 慢路径回退！
+   - 脚本自动检测当前环境：Colab 当前最新 L4 环境已实测升级至 PyTorch CUDA 13.0 (`cu130`)，直接激活原生 `int8_convrot` 算子；若处于 CUDA 12.x 环境，则自动无缝切换为 `fp8_scaled` (DiT) + `video_vae_fp16` (VAE)，完全释放 Ada 第四代 Tensor Core 硬件吞吐！
 3. **4-Step / 8-Step Turbo LoRA 双模式**：
-   - **8-Step**（默认，~150s）：电影级工业品质交付；
-   - **4-Step**（极速，~75s）：快速分镜验证与批量快筛。
+   - **8-Step**（默认，实测稳态 165s）：电影级工业品质交付；
+   - **4-Step**（极速，预估 ~80s）：快速分镜验证与批量快筛。
 4. **动态节点契约与网格对齐**：
    - 提交前根据 `/object_info` 校验输入契约，自动安全裁剪未注册参数；
    - 帧数向上严格自动对齐到 `17k + 5`（如 121 -> 124 帧）。
@@ -65,9 +65,10 @@ flowchart TD
 
 ## 📁 仓库目录结构
 
-- 📓 [notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb) — **Colab 核心生产笔记本 (2.0)**（单路无 CFG、自适应权重、直连下载优先 + Drive 容灾回退、看门狗熔断与 HTML5 试听）。
+- 📓 [notebooks/v2_0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2_0_minimax_h3_l4_production_mp4.ipynb) — **Colab 生产实测存证笔记本 (2.0)**（含 3 镜 574.6s、稳态 165s/镜、0.303 CU 消耗与音画预览完整日志存证）。
+- 📓 [notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb) — **Colab 核心生产笔记本模板 (2.0)**（单路无 CFG、自适应权重、直连下载优先 + Drive 容灾回退、看门狗熔断与 HTML5 试听）。
 - 📓 [notebooks/v2.0_test_shanghai_street_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_test_shanghai_street_mp4.ipynb) — **上海街景 10~20s 快速测试笔记本 (2.0)**。
-- 📓 [notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb) — **v1.0 基准存证笔记本**（含 306s/镜 实测日志存证）。
+- 📓 [notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb) — **v1.0 基准跑通笔记本**（已同步统一 Drive 幂等挂载与 NVMe 直连校验机制）。
 - 📓 [notebooks/v1.5_minimax_h3_l4_legacy_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1.5_minimax_h3_l4_legacy_mp4.ipynb) — **v1.5 超时归档笔记本**（旧版双路 CFG=3.0 排错对照）。
 - 🤖 [scripts/agent_colab_runner.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/agent_colab_runner.py) — **Agent 自动化托管执行器**（支持三重防扣费兜底、自适应权重、看门狗熔断）。
 - ⚙️ [scripts/check_gpu.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/check_gpu.py) — **硬件环境门禁脚本**（严格校验计算能力 ≥ 8.0、显存与磁盘；支持不达标立即销毁）。
@@ -88,7 +89,7 @@ flowchart TD
 
 | 规则 | 2.0 实测数据与规范说明 |
 |---|---|
-| **1. 算力费率与单镜成本减半** | **L4 实测费率 1.90 CU/h。2.0 架构消除 CFG 双倍计算后，单镜 124 帧稳态耗时降低至 ~150 秒，单镜算力成本低至 0.0818 CU（1 CU 可产出 12 镜）！Pro 方案月产 1,200 镜，Ultra 月产 6,000 镜！** |
+| **1. 算力费率与实测生产成本** | **L4 实测费率 1.90 CU/h。2.0 架构消除 CFG 双倍计算后，实测单镜冷启 243.5s、稳态仅需 165.4 秒（2分45秒），3 镜仅消耗 0.303 CU！单镜稳态算力成本仅 0.087 CU（1 CU 可产出 11.5 镜带音频 MP4）！Pro 方案月产 1,150~3,450 镜，Ultra 月产 5,750~17,250 镜！** |
 | **2. 严禁在 T4 上跑** | T4 算力 7.5，不支持量化算子加速，强行跑会立即 OOM 崩溃。门禁脚本自动阻断并调用 `runtime.unassign()` 关机。 |
 | **3. CUDA 12.x 自动用 fp8_scaled** | 在 Colab 默认 CUDA 12.x 环境下，`download_models.py` 与 Notebooks 自动选用 `fp8_scaled` + `video_vae_fp16`，消除 `int8_convrot` 缺少 cu130 算子导致的慢路径回退。 |
 | **4. BasicGuider 单路无 CFG** | 严禁使用 `KSampler (cfg=3.0)`，必须用 `BasicGuider`（CFG=1.0）。防止蒸馏模型伪影与双倍时间浪费。 |
