@@ -279,6 +279,27 @@ def run_batch(
         # 克隆工作流并动态注入参数
         wf = copy.deepcopy(base_workflow)
 
+        # 优先解析采样器图拓扑连接，准确定位正/负提示词与 Latent 节点 ID（不单纯依赖 _meta 标题）
+        pos_node_ids = set()
+        neg_node_ids = set()
+        latent_node_ids = set()
+
+        for nid, n in wf.items():
+            if not isinstance(n, dict):
+                continue
+            ctype = n.get("class_type")
+            inps = n.get("inputs", {})
+            if ctype in ("KSampler", "KSamplerAdvanced"):
+                if isinstance(inps.get("positive"), list) and len(inps["positive"]) > 0:
+                    pos_node_ids.add(str(inps["positive"][0]))
+                if isinstance(inps.get("negative"), list) and len(inps["negative"]) > 0:
+                    neg_node_ids.add(str(inps["negative"][0]))
+                if isinstance(inps.get("latent_image"), list) and len(inps["latent_image"]) > 0:
+                    latent_node_ids.add(str(inps["latent_image"][0]))
+            elif ctype == "BasicGuider":
+                if isinstance(inps.get("conditioning"), list) and len(inps["conditioning"]) > 0:
+                    pos_node_ids.add(str(inps["conditioning"][0]))
+
         # 遍历节点并匹配注入
         for node_id, node in wf.items():
             if not isinstance(node, dict):
@@ -327,17 +348,29 @@ def run_batch(
             elif class_type == "CreateVideo":
                 inputs.setdefault("fps", 24.0)
 
-            # 向后兼容旧版节点
+            # 向后兼容经典 1.0 节点
             elif class_type == "CLIPTextEncode":
-                if "Positive" in title_meta or not ("Negative" in title_meta):
+                t_lower = title_meta.lower()
+                is_pos = (node_id in pos_node_ids) or ("positive" in t_lower) or ("正向" in title_meta)
+                is_neg = (node_id in neg_node_ids) or ("negative" in t_lower) or ("负向" in title_meta)
+                if is_pos and not is_neg:
                     inputs["text"] = prompt_text
-                elif "Negative" in title_meta and neg_text:
-                    inputs["text"] = neg_text
-            elif class_type in ("EmptyMiniMaxH3LatentAV", "EmptyH3LatentVideo", "EmptyLatentVideo"):
+                    print(f"   📝 [节点 {node_id}] 正向提示词注入成功: {prompt_text[:50]}...")
+                elif is_neg and not is_pos:
+                    if neg_text:
+                        inputs["text"] = neg_text
+                        print(f"   🛡️ [节点 {node_id}] 负向提示词注入成功: {neg_text[:40]}...")
+                elif not pos_node_ids and not neg_node_ids:
+                    inputs["text"] = prompt_text
+                    print(f"   📝 [节点 {node_id}] 独立提示词注入成功: {prompt_text[:50]}...")
+
+            elif class_type in ("EmptyMiniMaxH3LatentAV", "EmptyH3LatentVideo", "EmptyLatentVideo") or (node_id in latent_node_ids):
                 inputs["width"] = width
                 inputs["height"] = height
                 inputs["length"] = length
-            elif class_type == "KSampler":
+                print(f"   📐 [节点 {node_id}: {class_type}] 规格尺寸注入: {width}x{height}, {length} 帧")
+
+            elif class_type in ("KSampler", "KSamplerAdvanced"):
                 inputs["steps"] = steps
                 inputs["seed"] = seed
                 if "cfg" in task:
