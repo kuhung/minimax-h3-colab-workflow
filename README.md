@@ -1,7 +1,7 @@
 # MiniMax H3 Colab 纯本地视频生产工作流 (2.0 Architecture)
 
-> 基于 Google AI Pro/Ultra 赠送的 Colab 计算单元（Pro 100 CU/月，Ultra 500 CU/月，90天可囤积），全流程**纯本地白嫖**运行 MiniMax H3（Hailuo 3.0）全模态视频模型。
-> **硬约束**：不调用任何 MiniMax 外部商业 API、不产生二次计费、聚焦无脸视频（Faceless Video）高品质批量出片。
+> 基于 Google AI Pro/Ultra 赠送的 Colab 计算单元（Pro 100 CU/月，Ultra 500 CU/月，90天可囤积），全流程**本地 Colab 推理**运行 MiniMax H3（Hailuo 3.0）全模态视频模型；额度仍按 Colab 面板扣 CU，不是零成本。
+> **硬约束**：不调用任何 MiniMax 外部商业 API、不产生 API 二次计费、聚焦无脸视频（Faceless Video）高品质批量出片。
 
 ---
 
@@ -15,8 +15,8 @@
    - `int8_convrot` 算子依赖 PyTorch `cu130` 与 `comfy-kitchen`；
    - 脚本自动检测当前环境：Colab 当前最新 L4 环境已实测升级至 PyTorch CUDA 13.0 (`cu130`)，直接激活原生 `int8_convrot` 算子；若处于 CUDA 12.x 环境，则自动无缝切换为 `fp8_scaled` (DiT) + `video_vae_fp16` (VAE)，完全释放 Ada 第四代 Tensor Core 硬件吞吐！
 3. **4-Step / 8-Step Turbo LoRA 双模式**：
-   - **8-Step**（默认，实测稳态 165s）：电影级工业品质交付；
-   - **4-Step**（极速，预估 ~80s）：快速分镜验证与批量快筛。
+   - **8-Step**（默认，实测稳态约 165s / 约 0.089 CU/稳态镜）：成片主路径；
+   - **4-Step**（候选快筛）：耗时与成本未经本仓库同条件实测，不作承诺；阶段四再对照评估。
 4. **动态节点契约与网格对齐**：
    - 提交前根据 `/object_info` 校验输入契约，自动安全裁剪未注册参数；
    - 帧数向上严格自动对齐到 `17k + 5`（如 121 -> 124 帧）。
@@ -92,7 +92,7 @@ flowchart TD
 
 | 规则 | 2.0 实测数据与规范说明 |
 |---|---|
-| **1. 算力费率与实测生产成本** | **L4 实测费率 1.94 CU/h。2.0 架构消除 CFG 双倍计算后，实测单镜冷启 243.5s、稳态仅需 165.4 秒（2分45秒），3 镜仅消耗 0.309 CU！单镜稳态算力成本低至 0.089 CU（1 CU 可稳定产出 11.2 镜带音频 MP4）！Pro 方案月产 1,120~3,360 镜，Ultra 月产 5,600~16,800 镜！** |
+| **1. 算力费率与实测生产成本** | **现行口径（仓库 L4 历史记录，非当前实例固定费率）**：1.94 CU/h；稳态约 **0.089 CU/镜**（960×544、124 帧、24fps、Turbo 8 步、BasicGuider；冷启 243.5s、稳态 165.4s）。三镜记录 574.6s、**0.309 CU**（按费率折算约 0.310 CU，显示精度/计时边界待复核）。三镜批次均摊约 **0.103 CU/镜**（含首镜开销，不能替代稳态口径）。启动/下载/空闲/失败/返工另计会话账单。**不构成月产量保证**；费率以当时 Colab 面板为准。旧文 0.087 CU 为历史口径，已停用。 |
 | **2. 严禁在 T4 上跑** | T4 算力 7.5，不支持量化算子加速，强行跑会立即 OOM 崩溃。门禁脚本自动阻断并调用 `runtime.unassign()` 关机。 |
 | **3. CUDA 12.x 自动用 fp8_scaled** | 在 Colab 默认 CUDA 12.x 环境下，`download_models.py` 与 Notebooks 自动选用 `fp8_scaled` + `video_vae_fp16`，消除 `int8_convrot` 缺少 cu130 算子导致的慢路径回退。 |
 | **4. BasicGuider 单路无 CFG** | 严禁使用 `KSampler (cfg=3.0)`，必须用 `BasicGuider`（CFG=1.0）。防止蒸馏模型伪影与双倍时间浪费。 |
