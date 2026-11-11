@@ -1,0 +1,30 @@
+{
+  "id": "i2v_watch_anchor",
+  "mode": "i2v",
+  "title": "商业机械腕表微距广告 (I2V 首帧外观锁定)",
+  "description": "基于首帧静态商品图锁定表壳与Logo几何特征，运用提示词减法原则仅描述秒针走动、边缘光掠过与30度弧形推镜，保证零面容形变与零结构失真。",
+  "first_frame": "outputs/showcase/multimodal/i2v_watch_anchor_start.png",
+  "start_image": "outputs/showcase/multimodal/i2v_watch_anchor_start.png",
+  "width": 960,
+  "height": 544,
+  "length": 124,
+  "steps": 8,
+  "seed": 301,
+  "sampler_name": "res_multistep",
+  "scheduler": "simple",
+  "cfg": 1.0,
+  "prompt": "Cinematic macro commercial shot of a luxury mechanical watch. The second hand sweeps smoothly across the deep blue dial with precision mechanical ticks. Warm rim light sweeps across the sapphire crystal, revealing fine brushed steel texture. Slow clockwise arc push-in 30 degrees.",
+  "negative_prompt": "static image, shaking, blurry, low resolution, warped logo, extra hands, distorted numerals, human faces, dialogue",
+  "motion_delta_prompt": "The second hand sweeps smoothly clockwise at 1 tick per second. Warm golden rim light pans across the beveled sapphire glass. Slow camera arc push forward 30 degrees.",
+  "negative_identity_rules": [
+    "Strictly maintain watch bezel, lugs, crown, and dial logo geometry unchanged",
+    "Do not add any text, watermarks, or extra dials",
+    "Preserve deep blue sunburst texture and brushed metallic reflection without plastic smoothing"
+  ],
+  "swap_guide": {
+    "step_1": "准备一张 16:9 或接近 960x544 的高保真商品主体图（如香水、腕表、汽车或角色正面定妆照）。",
+    "step_2": "将图片放入本工程或 Colab 工作目录，在配置中修改 'first_frame' (或 'start_image') 为您的图片路径。",
+    "step_3": "践行【提示词减法原则】：不要在 prompt 中重复描写图片已有的长相、颜色、表盘文字；仅描写【运动增量】（如转头、微风吹拂、光线扫掠、推拉运镜）。",
+    "step_4": "保持 width=960, height=544, length=124 (17k+5) 黄金规格，一键执行即可保证商品零形变出片！"
+  }
+}

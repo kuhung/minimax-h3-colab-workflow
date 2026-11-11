@@ -65,12 +65,15 @@ flowchart TD
 
 ## 📁 仓库目录结构
 
+- 📓 [notebooks/v4_0_minimax_h3_image_colab_demo.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v4_0_minimax_h3_image_colab_demo.ipynb) — **Colab MiniMax-H3-Image 生产实测存证笔记本 (v4.0)**（免 ComfyUI，`stable-diffusion.cpp` INT8/GGUF 6步 2048x2048 文生图与指令修图完整输出存证）。
+- 📓 [notebooks/v4.0_minimax_h3_image_colab_demo.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v4.0_minimax_h3_image_colab_demo.ipynb) — **Colab MiniMax-H3-Image 干净生产模板 (v4.0)**（HF 直连 NVMe 优先、sd-cli 编译缓存秒级恢复、2小时看门狗防扣费）。
 - 📓 [notebooks/v2_0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2_0_minimax_h3_l4_production_mp4.ipynb) — **Colab 生产实测存证笔记本 (2.0)**（含 3 镜 574.6s、稳态 165s/镜、0.309 CU 消耗与音画预览完整日志存证）。
 - 📓 [notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb) — **Colab 核心生产笔记本模板 (2.0)**（单路无 CFG、自适应权重、直连下载优先 + Drive 容灾回退、看门狗熔断与 HTML5 试听）。
 - 📓 [notebooks/v2.0_test_shanghai_street_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_test_shanghai_street_mp4.ipynb) — **上海街景 10~20s 快速测试笔记本 (2.0)**。
 - 📓 [notebooks/v1_0_minimax_h3_l4_benchmark_webp.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1_0_minimax_h3_l4_benchmark_webp.ipynb) — **v1.0 基准实测存证笔记本**（含 960x544 315s 与 1344x768 875s 完整存证）。
 - 📓 [notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb) — **v1.0 基准跑通模板笔记本**（已同步统一 Drive 幂等挂载与 NVMe 直连校验机制）。
 - 📓 [notebooks/v1.5_minimax_h3_l4_legacy_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1.5_minimax_h3_l4_legacy_mp4.ipynb) — **v1.5 超时归档笔记本**（旧版双路 CFG=3.0 排错对照）。
+- 🎨 [scripts/demo_h3_image.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/demo_h3_image.py) — **MiniMax-H3-Image 独立多后端演示脚本**（支持 `sdcpp`、`comfyui`、`diffusers`，原生 16MP 直出与多图编辑）。
 - 🤖 [scripts/agent_colab_runner.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/agent_colab_runner.py) — **Agent 自动化托管执行器**（支持三重防扣费兜底、自适应权重、看门狗熔断）。
 - ⚙️ [scripts/check_gpu.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/check_gpu.py) — **硬件环境门禁脚本**（严格校验计算能力 ≥ 8.0、显存与磁盘；支持不达标立即销毁）。
 - 📦 [scripts/download_models.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/download_models.py) — **权重自适应校验与高速拉取**（直连下载优先、`--variant` / `--turbo-steps`、精确字节校验、safetensors 头部边界校验）。
@@ -80,7 +83,8 @@ flowchart TD
 - 📋 [configs/prompts.example.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/prompts.example.json) — 任务排期模板（已对齐 124 帧）。
 - 📋 [configs/story_cyber_dawn.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/story_cyber_dawn.json) — 短视频分镜剧本案例（《极客破晓：硅基脉动》，8 镜头成片流水线）。
 - 📋 [configs/shanghai_street.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/shanghai_street.json) — 上海街景 3 镜案例。
-- 🗺️ [docs/ROADMAP.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/ROADMAP.md) — **研发路线图**（定义敏捷发布、宣发与参考图迭代计划）。
+- 🗺️ [docs/ROADMAP.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/ROADMAP.md) — **研发路线图**（从基准闭环到垂直领域 SOTA 交付的演进计划）。
+- 📚 [docs/articles/plan.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/articles/plan.md) — **SOTA 系列实战指南规划**（高屋建瓴的技术选型、基准决策影响、全模态控制流打通与垂直 SOTA 交付流水线）。
 - 📑 [docs/REFERENCES.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/REFERENCES.md) — **开源借鉴清单与技术吸收明细**（吸收 Turbo LoRA、多图路由、表单输入抽象与官方节点标准）。
 - 📖 [docs/COLAB_MCP_INTEGRATION.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/COLAB_MCP_INTEGRATION.md) — Colab MCP 深度集成与 Agent 全自动化托管操作手册。
 - 📖 [docs/PROMPT_RECIPES.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/PROMPT_RECIPES.md) — 官方原生结构化多镜头语法与 10 大风格 Embedding 指南。

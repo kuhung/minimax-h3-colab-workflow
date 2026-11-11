@@ -1,0 +1,50 @@
+{
+  "id": "ref2va_motion_transfer",
+  "mode": "ref2va",
+  "title": "全模态运镜复刻与音画双轨分流 (Ref2VA 全参考综合控制)",
+  "description": "运用多模态特征解耦提取：@图片1 锁定定妆角色长相与服饰，@视频1 复刻 24fps 环绕推进运镜与节奏，@音频1 继承环境声场，@音频2 叠加低频脉冲节拍。严格遵循 12 文件与 15s 配额门禁。",
+  "ref_images": [
+    "outputs/showcase/multimodal/ref2va_subject_anchor.png"
+  ],
+  "ref_videos": [
+    {
+      "path": "outputs/showcase/multimodal/ref2va_motion_ref_24fps.mp4",
+      "duration": 5.16,
+      "fps": 24.0
+    }
+  ],
+  "ref_audios": [
+    {
+      "path": "outputs/showcase/multimodal/ref2va_pulse_audio.wav",
+      "duration": 5.16
+    }
+  ],
+  "width": 960,
+  "height": 544,
+  "length": 124,
+  "steps": 4,
+  "seed": 303,
+  "sampler_name": "res_multistep",
+  "scheduler": "simple",
+  "cfg": 1.0,
+  "prompt": "The camera replicates the precise 24fps orbiting push tracking of @视频1. The subject preserves the character identity, hair, and costume styling of @图片1. Environmental soundscape syncs with the room ambience of @音频1, layered with the deep sub-bass rhythmic pulse from @音频2.",
+  "negative_prompt": "identity drift, face deformation, camera jump cut, erratic zoom, audio clipping, desync, noisy background, plastic skin",
+  "multimodal_quota_declaration": {
+    "images_count": 1,
+    "videos_count": 1,
+    "audios_count": 1,
+    "total_files": 3,
+    "max_files_limit": 12,
+    "videos_total_sec": 5.16,
+    "audios_total_sec": 5.16,
+    "max_duration_limit_sec": 15.0,
+    "audio_track_1": "Attached audio from @视频1 (priority index 1)",
+    "audio_track_2": "Independent pulse audio from ref_audio_2 (index 2)"
+  },
+  "swap_guide": {
+    "step_1": "收集素材并严格遵守配额限制：参考图 ≤ 9 张，参考视频 ≤ 3 段（单段 2~15s，总长 ≤ 15s），参考音频 ≤ 3 段（总长 ≤ 15s），混合总文件 ≤ 12 个。切记不可单独提交纯音频！",
+    "step_2": "将所有参考视频先通过 transcode_video_to_24fps 转换为 24fps 恒定帧率与 16 倍数尺寸，确保 ComfyUI 正确读取。",
+    "step_3": "在 prompt 中使用显式 @ 绑定，例如：'@图片1' 控制外观、'@视频1' 控制运镜与身体动作、'@音频1' 控制视频自带音、'@音频2' 控制额外音轨。",
+    "step_4": "注意音频编号铁律：视频附带的音频按视频顺序优先占用 @音频1...@音频N，随后独立音频文件才接着按编号排序！"
+  }
+}

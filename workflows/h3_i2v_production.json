@@ -1,0 +1,230 @@
+{
+  "1": {
+    "inputs": {
+      "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "MiniMax H3 Diffusion Model (Pruned Int8)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "MiniMax H3 Text Encoder (NVFP4)"
+    }
+  },
+  "4": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "MiniMax H3 Video VAE"
+    }
+  },
+  "11": {
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "MiniMax H3 Audio VAE (32kHz Stereo)"
+    }
+  },
+  "10": {
+    "inputs": {
+      "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+      "strength_model": 1.0,
+      "model": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Turbo 8-Step LoRA"
+    }
+  },
+  "20": {
+    "inputs": {
+      "image": "i2v_watch_anchor_start.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Start Image (Anchor)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "prompt": "Cinematic macro commercial shot of a luxury mechanical watch. The second hand sweeps smoothly across the deep blue dial with precision mechanical ticks. Warm rim light sweeps across the sapphire crystal, revealing fine brushed steel texture. Slow clockwise arc push-in 30 degrees. The watch proportions and dial logo remain completely unchanged, no extra objects, no dialogue.",
+      "width": 960,
+      "height": 544,
+      "length": 124,
+      "clip": [
+        "2",
+        0
+      ],
+      "vae": [
+        "4",
+        0
+      ],
+      "first_frame": [
+        "20",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3ImageToVideo",
+    "_meta": {
+      "title": "MiniMax H3 ImageToVideo (Latent & Conditioning)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "model": [
+        "10",
+        0
+      ],
+      "conditioning": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "BasicGuider (No CFG, CFG=1.0)"
+    }
+  },
+  "14": {
+    "inputs": {
+      "noise_seed": 301
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "Random Noise"
+    }
+  },
+  "15": {
+    "inputs": {
+      "sampler_name": "res_multistep"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect (res_multistep)"
+    }
+  },
+  "16": {
+    "inputs": {
+      "steps": 8,
+      "denoise": 1.0,
+      "scheduler": "simple",
+      "model": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler (simple)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "noise": [
+        "14",
+        0
+      ],
+      "guider": [
+        "7",
+        0
+      ],
+      "sampler": [
+        "15",
+        0
+      ],
+      "sigmas": [
+        "16",
+        0
+      ],
+      "latent_image": [
+        "6",
+        1
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode Video"
+    }
+  },
+  "12": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeAudio",
+    "_meta": {
+      "title": "VAE Decode Audio (Native 32kHz Stereo)"
+    }
+  },
+  "13": {
+    "inputs": {
+      "images": [
+        "8",
+        0
+      ],
+      "audio": [
+        "12",
+        0
+      ],
+      "fps": 24.0
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "Create Video from Frames & Audio"
+    }
+  },
+  "9": {
+    "inputs": {
+      "video": [
+        "13",
+        0
+      ],
+      "filename_prefix": "H3_V3_1_I2V",
+      "format": "mp4",
+      "codec": "auto"
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "Save Production MP4 Video"
+    }
+  }
+}

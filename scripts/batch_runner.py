@@ -2,54 +2,89 @@
 """
 Headless Batch Runner for MiniMax H3 on ComfyUI (2.0 Architecture).
 Features:
-1. Native 2.0 Topology Support: MiniMaxH3ImageToVideo + BasicGuider + SamplerCustomAdvanced (CFG=1.0).
-2. Backward compatibility with legacy KSampler graphs.
-3. 17k + 5 Frame Alignment (align_frame_count).
-4. Structured Multi-shot / Multimodal Prompt Assembler (format_h3_prompt).
-5. Dynamic /object_info Contract Validation & Unsupported Parameter Pruning.
-6. Timeout Interrupt & Direct Google Drive Export.
+1. Native 2.0 Topology Support: MiniMaxH3ImageToVideo / MiniMaxH3ReferenceToVideo + BasicGuider + SamplerCustomAdvanced (CFG=1.0).
+2. Dynamic Multimodal Mode Routing (t2v, i2v, flf2v, ref2va) with strict mode enforcement (no silent fallback).
+3. MiniMaxH3ImageToVideo Schema Compliance: first_frame & last_frame port mapping.
+4. MiniMaxH3ReferenceToVideo Autogrow & LoadVideo -> GetVideoComponents unpack topology.
+5. 17k + 5 Frame Alignment (align_frame_count).
+6. Structured Multi-shot / Multimodal Prompt Assembler with reference tag normalization (@图片N <-> <Picture N>).
+7. Dynamic /object_info Contract Validation & Semantic Essential Input Protection (prevents Autogrow & essential stripping).
+8. Media staging to ComfyUI input/ directory with SHA256 template hashing.
+9. Timeout Interrupt & Direct Google Drive Export.
 """
 
 import os
+import re
 import sys
 import copy
 import json
 import time
 import shutil
+import hashlib
 import urllib.request
 import urllib.parse
 import urllib.error
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Set
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+MODE_WORKFLOW_MAP = {
+    "t2v": str(PROJECT_ROOT / "workflows" / "h3_t2v_pdd8_production.json"),
+    "i2v": str(PROJECT_ROOT / "workflows" / "h3_i2v_production.json"),
+    "flf2v": str(PROJECT_ROOT / "workflows" / "h3_flf2v_production.json"),
+    "ref2va": str(PROJECT_ROOT / "workflows" / "h3_ref2va_production.json"),
+}
+
+PROTECTED_ESSENTIAL_KEYS: Set[str] = {
+    "prompt", "width", "height", "length", "clip", "vae", "audio_vae",
+    "first_frame", "last_frame", "start_image", "end_image",
+    "ref_image_size", "ref_images", "ref_videos", "ref_video_audios", "ref_audios",
+    "ref_images.ref_image_0", "ref_videos.ref_video_0",
+    "ref_video_audios.ref_video_audio_0", "ref_audios.ref_audio_0",
+    "model", "conditioning", "samples", "images", "audio", "video",
+    "noise", "guider", "sampler", "sigmas", "latent_image"
+}
+
+def compute_file_sha256(filepath: str) -> str:
+    """Computes SHA256 checksum of a file."""
+    h = hashlib.sha256()
+    with open(filepath, "rb") as f:
+        while chunk := f.read(65536):
+            h.update(chunk)
+    return h.hexdigest()
 
 def align_frame_count(n: int) -> int:
     """Align frame count upwards to 17k + 5 (MiniMax H3 latent temporal grid at 24fps)."""
     n = max(5, int(n))
     return n + (5 - n % 17) % 17
 
+def normalize_h3_reference_tags(prompt: str) -> str:
+    """Normalizes @图片N to <Picture N>, @视频N to <Video N>, @音频N to <Audio N>."""
+    if not prompt:
+        return ""
+    p = re.sub(r'[@<]图片(\d+)[>]?', r'<Picture \1>', prompt)
+    p = re.sub(r'[@<](?:image|picture)\s*(\d+)[>]?', r'<Picture \1>', p, flags=re.IGNORECASE)
+    p = re.sub(r'[@<]视频(\d+)[>]?', r'<Video \1>', p)
+    p = re.sub(r'[@<]video\s*(\d+)[>]?', r'<Video \1>', p, flags=re.IGNORECASE)
+    p = re.sub(r'[@<]音频(\d+)[>]?', r'<Audio \1>', p)
+    p = re.sub(r'[@<]audio\s*(\d+)[>]?', r'<Audio \1>', p, flags=re.IGNORECASE)
+    return p
+
 def format_h3_prompt(task: dict) -> str:
     """
     Format MiniMax H3 structured prompt according to official multi-shot / multimodal spec.
-    If task contains 'shots' or 'overall_soundscape', formats:
-      integrated_multimodal_description:
-      [Shot 1] ...
-      [Shot 2] At MM:SS.mmm, ...
-
-      overall_soundscape: ...
-
-      non_diegetic_music: ...
-    If task already provides plain 'prompt', returns it directly.
     """
     if not isinstance(task, dict):
-        return str(task)
+        return normalize_h3_reference_tags(str(task))
 
     shots = task.get("shots")
     soundscape = task.get("overall_soundscape")
     music = task.get("non_diegetic_music")
 
     if not shots and not soundscape and not music:
-        return task.get("prompt", "")
+        return normalize_h3_reference_tags(task.get("prompt", ""))
 
     parts = []
     if shots:
@@ -77,7 +112,8 @@ def format_h3_prompt(task: dict) -> str:
     if music:
         parts.append(f"non_diegetic_music: {music}")
 
-    return "\n\n".join(parts)
+    raw_res = "\n\n".join(parts)
+    return normalize_h3_reference_tags(raw_res)
 
 def fetch_object_info(server_url: str) -> Optional[dict]:
     """Queries ComfyUI /object_info endpoint."""
@@ -92,7 +128,8 @@ def fetch_object_info(server_url: str) -> Optional[dict]:
 def validate_and_adapt_workflow(wf: dict, obj_info: Optional[dict]) -> dict:
     """
     Validates node classes and input fields against ComfyUI /object_info.
-    Automatically prunes unsupported optional inputs to prevent ComfyUI 400 rejection.
+    Automatically prunes unsupported optional inputs to prevent ComfyUI 400 rejection,
+    WHILE STRICTLY PROTECTING semantic essential inputs and Autogrow dotted prefix keys!
     """
     if not obj_info:
         return wf
@@ -113,9 +150,16 @@ def validate_and_adapt_workflow(wf: dict, obj_info: Optional[dict]) -> dict:
         valid_keys = req | opt
         inputs = node.get("inputs", {})
 
-        to_remove = [k for k in list(inputs.keys()) if k not in valid_keys]
+        # Check validity considering Autogrow dotted prefixes (e.g. ref_images.ref_image_0)
+        to_remove = []
+        for k in list(inputs.keys()):
+            prefix = k.split(".")[0]
+            is_valid = (k in valid_keys) or (prefix in valid_keys) or (k in PROTECTED_ESSENTIAL_KEYS) or (prefix in PROTECTED_ESSENTIAL_KEYS)
+            if not is_valid:
+                to_remove.append(k)
+
         for k in to_remove:
-            print(f"⚠️ 节点 [{nid}: {ctype}] 移除非当前版本支持的输入参数: '{k}'")
+            print(f"⚠️ 节点 [{nid}: {ctype}] 移除非当前版本支持的非必需参数: '{k}'")
             del inputs[k]
 
         missing_req = [k for k in req if k not in inputs]
@@ -123,6 +167,29 @@ def validate_and_adapt_workflow(wf: dict, obj_info: Optional[dict]) -> dict:
             raise ValueError(f"节点 [{nid}: {ctype}] 缺失必要输入参数: {missing_req}")
 
     return cleaned_wf
+
+def stage_media_file(src_path: str, comfy_input_dir: Path) -> str:
+    """
+    Copies or symlinks input media into ComfyUI's input directory so ComfyUI nodes can access it.
+    Returns the basename of the file in comfy_input_dir.
+    """
+    p = Path(src_path)
+    if not p.is_absolute():
+        p = (PROJECT_ROOT / p).resolve()
+
+    if not p.exists():
+        raise FileNotFoundError(f"Input media file not found: {src_path} (resolved: {p})")
+
+    comfy_input_dir.mkdir(parents=True, exist_ok=True)
+    dst = comfy_input_dir / p.name
+    if not dst.exists() or dst.stat().st_size != p.stat().st_size:
+        try:
+            if dst.is_symlink() or dst.exists():
+                dst.unlink()
+            shutil.copy2(p, dst)
+        except Exception:
+            pass
+    return p.name
 
 def post_prompt(server_url: str, prompt_workflow: dict) -> Optional[str]:
     """Submits workflow JSON to ComfyUI API /prompt."""
@@ -194,7 +261,7 @@ def extract_output_files(history_data: dict, comfy_output_dir: Path) -> List[Pat
     return files
 
 def run_batch(
-    workflow_path: str,
+    workflow_path: Optional[str] = None,
     prompts_path: Optional[str] = None,
     output_dir: str = "/content/drive/MyDrive/MiniMax_Outputs",
     server_url: str = "http://127.0.0.1:8188",
@@ -202,18 +269,16 @@ def run_batch(
     timeout_per_shot: int = 900,
     tasks_list: Optional[List[dict]] = None,
     active_models: Optional[Dict[str, str]] = None,
+    default_mode: str = "t2v"
 ):
     print("=" * 68)
-    print("🎬 MiniMax H3 批处理队列执行器 (Batch Runner 2.0 - BasicGuider / No-CFG)")
-    print(f"📄 工作流模板: {workflow_path}")
+    print("🎬 MiniMax H3 批处理执行器 (Batch Runner 2.0 - V3 Multimodal Control Flow)")
 
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
     log_file = out_path / "render_history.jsonl"
     comfy_out_path = Path(comfy_output_dir)
-
-    with open(workflow_path, "r", encoding="utf-8") as f:
-        base_workflow = json.load(f)
+    comfy_input_dir = comfy_out_path.parent / "input" if comfy_out_path.parent.exists() else Path("/content/ComfyUI/input")
 
     if tasks_list is not None:
         tasks = tasks_list
@@ -222,10 +287,12 @@ def run_batch(
         print(f"📋 任务清单: {prompts_path}")
         with open(prompts_path, "r", encoding="utf-8") as f:
             tasks = json.load(f)
+            if isinstance(tasks, dict):
+                tasks = [tasks]
     else:
         raise ValueError("必须提供 prompts_path 或 tasks_list 其中之一！")
 
-    # 动态解析当前环境实际权重（优先使用传入的 active_models，未传时自动探测 models 目录）
+    # 动态解析当前环境实际权重
     resolved_models = dict(active_models) if active_models else {}
     if not resolved_models and comfy_out_path.parent.exists():
         models_dir = comfy_out_path.parent / "models"
@@ -233,7 +300,12 @@ def run_batch(
         vae_dir = models_dir / "vae"
         lora_dir = models_dir / "loras"
         if diff_dir.exists():
-            for cand in ["minimax_h3_fl2va_pruned_fp8_scaled.safetensors", "minimax_h3_fl2va_pruned_int8_convrot.safetensors"]:
+            for cand in [
+                "minimax_h3_fl2va_pruned_fp8_scaled.safetensors",
+                "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+                "minimax_h3_ref2va_pruned_fp8_scaled.safetensors",
+                "minimax_h3_ref2va_pruned_int8_convrot.safetensors"
+            ]:
                 if (diff_dir / cand).exists():
                     resolved_models["diffusion_model"] = cand
                     break
@@ -243,7 +315,11 @@ def run_batch(
                     resolved_models["video_vae"] = cand
                     break
         if lora_dir.exists():
-            for cand in ["minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors", "minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors"]:
+            for cand in [
+                "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+                "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+                "minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors"
+            ]:
                 if (lora_dir / cand).exists():
                     resolved_models["lora"] = cand
                     break
@@ -261,52 +337,49 @@ def run_batch(
     for idx, task in enumerate(tasks, 1):
         task_id = task.get("id", f"shot_{idx:02d}")
         title = task.get("title", task_id)
+        mode = task.get("mode", default_mode).lower()
+
+        # Mode-based dynamic workflow routing
+        if mode in MODE_WORKFLOW_MAP:
+            target_wf_path = MODE_WORKFLOW_MAP[mode]
+        elif workflow_path and Path(workflow_path).exists():
+            target_wf_path = workflow_path
+        else:
+            raise ValueError(
+                f"❌ 不支持的生成模式: '{mode}'！仅支持: {list(MODE_WORKFLOW_MAP.keys())}。严格拒绝静默退回！"
+            )
+
+        if not Path(target_wf_path).exists():
+            raise FileNotFoundError(f"找不到模式 [{mode}] 对应的工作流文件: {target_wf_path}")
+
+        # Compute and log workflow template SHA256
+        wf_hash = compute_file_sha256(target_wf_path)
+        with open(target_wf_path, "r", encoding="utf-8") as f:
+            base_workflow = json.load(f)
+
         prompt_text = format_h3_prompt(task)
         neg_text = task.get("negative_prompt", "")
-        steps = int(task.get("steps", 8))
+        steps = int(task.get("steps", 8 if mode != "ref2va" else 4))
         seed = int(task.get("seed", int(time.time())))
-        width = int(task.get("width", 1344))
-        height = int(task.get("height", 768))
+        width = int(task.get("width", 960))
+        height = int(task.get("height", 544))
         raw_length = int(task.get("length", 124))
         length = align_frame_count(raw_length)
-        if length != raw_length:
-            print(f"   ℹ️ 帧数自动网格对齐 (17k + 5): {raw_length} -> {length}")
 
-        print(f"[{idx}/{len(tasks)}] 正在启动: {task_id} - {title}")
+        print(f"[{idx}/{len(tasks)}] 正在启动: {task_id} - {title} (模式: {mode.upper()})")
+        print(f"   📄 工作流模板: {Path(target_wf_path).name} (SHA256: {wf_hash[:16]}...)")
         print(f"   📐 规格: {width}x{height} | {length} 帧 | 步数 {steps} | 种子 {seed}")
         print(f"   📝 提示词: {prompt_text[:90]}...")
 
         # 克隆工作流并动态注入参数
         wf = copy.deepcopy(base_workflow)
 
-        # 优先解析采样器图拓扑连接，准确定位正/负提示词与 Latent 节点 ID（不单纯依赖 _meta 标题）
-        pos_node_ids = set()
-        neg_node_ids = set()
-        latent_node_ids = set()
-
-        for nid, n in wf.items():
-            if not isinstance(n, dict):
-                continue
-            ctype = n.get("class_type")
-            inps = n.get("inputs", {})
-            if ctype in ("KSampler", "KSamplerAdvanced"):
-                if isinstance(inps.get("positive"), list) and len(inps["positive"]) > 0:
-                    pos_node_ids.add(str(inps["positive"][0]))
-                if isinstance(inps.get("negative"), list) and len(inps["negative"]) > 0:
-                    neg_node_ids.add(str(inps["negative"][0]))
-                if isinstance(inps.get("latent_image"), list) and len(inps["latent_image"]) > 0:
-                    latent_node_ids.add(str(inps["latent_image"][0]))
-            elif ctype == "BasicGuider":
-                if isinstance(inps.get("conditioning"), list) and len(inps["conditioning"]) > 0:
-                    pos_node_ids.add(str(inps["conditioning"][0]))
-
-        # 遍历节点并匹配注入
+        # 遍历节点并注入模式特定参数
         for node_id, node in wf.items():
             if not isinstance(node, dict):
                 continue
             class_type = node.get("class_type")
             inputs = node.get("inputs", {})
-            title_meta = node.get("_meta", {}).get("title", "")
 
             # 动态权重注入
             if class_type == "UNETLoader" and "diffusion_model" in resolved_models:
@@ -317,12 +390,78 @@ def run_batch(
             elif class_type in ("LoraLoaderModelOnly", "LoraLoader") and "lora" in resolved_models:
                 inputs["lora_name"] = resolved_models["lora"]
 
-            # 2.0 新节点注入
+            # MiniMax 核心生成节点参数注入
             elif class_type == "MiniMaxH3ImageToVideo":
                 inputs["prompt"] = prompt_text
                 inputs["width"] = width
                 inputs["height"] = height
                 inputs["length"] = length
+                # 清除旧可能残留的 start_image / end_image
+                inputs.pop("start_image", None)
+                inputs.pop("end_image", None)
+
+                # Schema 规范：使用 first_frame 和 last_frame
+                if mode in ("i2v", "flf2v"):
+                    first_f = task.get("first_frame") or task.get("start_image")
+                    if first_f:
+                        staged_name = stage_media_file(first_f, comfy_input_dir)
+                        inputs["first_frame"] = ["20", 0]
+                        if "20" in wf:
+                            wf["20"]["inputs"]["image"] = staged_name
+                            print(f"   🖼️ [节点 20 -> 6] 注入首帧 (first_frame): {staged_name}")
+
+                if mode == "flf2v":
+                    last_f = task.get("last_frame") or task.get("end_image")
+                    if last_f:
+                        staged_name = stage_media_file(last_f, comfy_input_dir)
+                        inputs["last_frame"] = ["21", 0]
+                        if "21" in wf:
+                            wf["21"]["inputs"]["image"] = staged_name
+                            print(f"   🖼️ [节点 21 -> 6] 注入尾帧 (last_frame): {staged_name}")
+
+            elif class_type == "MiniMaxH3ReferenceToVideo":
+                inputs["prompt"] = prompt_text
+                inputs["width"] = width
+                inputs["height"] = height
+                inputs["length"] = length
+                inputs["ref_image_size"] = task.get("ref_image_size", "match")
+
+                # 处理多模态引用文件暂存与注入
+                ref_imgs = task.get("ref_images", [])
+                ref_vids = task.get("ref_videos", [])
+                ref_auds = task.get("ref_audios", [])
+
+                if ref_imgs and "20" in wf:
+                    f_name = stage_media_file(ref_imgs[0] if isinstance(ref_imgs[0], str) else ref_imgs[0].get("path"), comfy_input_dir)
+                    wf["20"]["inputs"]["image"] = f_name
+                    inputs["ref_images.ref_image_0"] = ["20", 0]
+                    print(f"   🖼️ [节点 20 -> 6] 注入参考图 (ref_images.ref_image_0): {f_name}")
+
+                if ref_vids and "21" in wf:
+                    v_item = ref_vids[0]
+                    v_path = v_item if isinstance(v_item, str) else v_item.get("path")
+                    f_name = stage_media_file(v_path, comfy_input_dir)
+                    wf["21"]["inputs"]["file"] = f_name
+                    # 确保 GetVideoComponents (node 23) 正确连线
+                    if "23" in wf:
+                        wf["23"]["inputs"]["video"] = ["21", 0]
+                        inputs["ref_videos.ref_video_0"] = ["23", 0]
+                        keep_audio = task.get("keep_ref_video_audio", True)
+                        if keep_audio:
+                            inputs["ref_video_audios.ref_video_audio_0"] = ["23", 1]
+                            print(f"   🎥 [节点 21/23 -> 6] 注入参考视频及音轨 (ref_videos.ref_video_0, ref_video_audios.ref_video_audio_0): {f_name}")
+                        else:
+                            inputs.pop("ref_video_audios.ref_video_audio_0", None)
+                            print(f"   🎥 [节点 21/23 -> 6] 注入参考视频画面 (不采用视频自带音频): {f_name}")
+
+                if ref_auds and "22" in wf:
+                    a_item = ref_auds[0]
+                    a_path = a_item if isinstance(a_item, str) else a_item.get("path")
+                    f_name = stage_media_file(a_path, comfy_input_dir)
+                    wf["22"]["inputs"]["audio"] = f_name
+                    inputs["ref_audios.ref_audio_0"] = ["22", 0]
+                    print(f"   🎵 [节点 22 -> 6] 注入参考音频 (ref_audios.ref_audio_0): {f_name}")
+
             elif class_type == "RandomNoise":
                 inputs["noise_seed"] = seed
             elif class_type == "KSamplerSelect":
@@ -340,43 +479,10 @@ def run_batch(
                 inputs["filename_prefix"] = f"{task_id}_{seed}"
                 if class_type == "SaveVideo":
                     inputs.setdefault("format", "mp4")
-                elif class_type == "SaveAnimatedWEBP":
-                    inputs.setdefault("fps", 24.0)
-                    inputs.setdefault("lossless", False)
-                    inputs.setdefault("quality", 85)
-                    inputs.setdefault("method", "default")
             elif class_type == "CreateVideo":
                 inputs.setdefault("fps", 24.0)
 
-            # 向后兼容经典 1.0 节点
-            elif class_type == "CLIPTextEncode":
-                t_lower = title_meta.lower()
-                is_pos = (node_id in pos_node_ids) or ("positive" in t_lower) or ("正向" in title_meta)
-                is_neg = (node_id in neg_node_ids) or ("negative" in t_lower) or ("负向" in title_meta)
-                if is_pos and not is_neg:
-                    inputs["text"] = prompt_text
-                    print(f"   📝 [节点 {node_id}] 正向提示词注入成功: {prompt_text[:50]}...")
-                elif is_neg and not is_pos:
-                    if neg_text:
-                        inputs["text"] = neg_text
-                        print(f"   🛡️ [节点 {node_id}] 负向提示词注入成功: {neg_text[:40]}...")
-                elif not pos_node_ids and not neg_node_ids:
-                    inputs["text"] = prompt_text
-                    print(f"   📝 [节点 {node_id}] 独立提示词注入成功: {prompt_text[:50]}...")
-
-            elif class_type in ("EmptyMiniMaxH3LatentAV", "EmptyH3LatentVideo", "EmptyLatentVideo") or (node_id in latent_node_ids):
-                inputs["width"] = width
-                inputs["height"] = height
-                inputs["length"] = length
-                print(f"   📐 [节点 {node_id}: {class_type}] 规格尺寸注入: {width}x{height}, {length} 帧")
-
-            elif class_type in ("KSampler", "KSamplerAdvanced"):
-                inputs["steps"] = steps
-                inputs["seed"] = seed
-                if "cfg" in task:
-                    inputs["cfg"] = float(task["cfg"])
-
-        # 校验并适配 ComfyUI 节点输入契约
+        # 校验并适配 ComfyUI 节点输入契约（同时保护必需语义）
         try:
             wf = validate_and_adapt_workflow(wf, obj_info)
         except Exception as ve:
@@ -391,6 +497,7 @@ def run_batch(
             log_record = {
                 "timestamp": datetime.now().isoformat(),
                 "task_id": task_id,
+                "mode": mode,
                 "status": "submission_failed",
                 "title": title,
                 "cost_seconds": 0,
@@ -412,9 +519,7 @@ def run_batch(
 
         copied_files = []
         if res and is_completed and status_str == "success":
-            # 优先从 outputs 解析生成文件
             found_files = extract_output_files(res, comfy_out_path)
-            # 若为空，兜底 glob 扫描
             if not found_files and comfy_out_path.exists():
                 found_files = list(comfy_out_path.glob(f"{task_id}_{seed}*"))
 
@@ -438,6 +543,7 @@ def run_batch(
         log_record = {
             "timestamp": datetime.now().isoformat(),
             "task_id": task_id,
+            "mode": mode,
             "title": title,
             "status": log_status,
             "cost_seconds": t_cost,
@@ -461,8 +567,9 @@ def run_batch(
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="ComfyUI Batch Runner for MiniMax H3 (2.0)")
-    parser.add_argument("--workflow", default="workflows/h3_t2v_pdd8_production.json", help="Path to workflow JSON")
+    parser.add_argument("--workflow", default=None, help="Path to workflow JSON (optional, overrides mode)")
     parser.add_argument("--prompts", default="configs/prompts.example.json", help="Path to prompts JSON")
+    parser.add_argument("--mode", default="t2v", choices=["t2v", "i2v", "flf2v", "ref2va"], help="Default generation mode")
     parser.add_argument("--output", default="/content/drive/MyDrive/MiniMax_Outputs", help="Output directory")
     parser.add_argument("--server", default="http://127.0.0.1:8188", help="ComfyUI server URL")
     parser.add_argument("--comfy-output", default="/content/ComfyUI/output", help="ComfyUI output dir")
@@ -472,6 +579,7 @@ if __name__ == "__main__":
     run_batch(
         workflow_path=args.workflow,
         prompts_path=args.prompts,
+        default_mode=args.mode,
         output_dir=args.output,
         server_url=args.server,
         comfy_output_dir=args.comfy_output,

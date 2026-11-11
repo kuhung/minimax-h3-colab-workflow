@@ -8,20 +8,19 @@
 
 > **算力费率基准**：NVIDIA L4 在 Google Colab 资源面板的官方实测扣费费率为 **1.94 CU/小时**。
 
-| 维度 | **v1.0 (基准跑通版)** 🏆 | **v1.5 (旧版试验组 - 超时)** ⚠️ | **v2.0 (生产实测存证版)** 🚀 | **v2.0 (代码模板干净版)** 📋 |
+| 维度 | **v1.0 (视频跑通版)** 🏆 | **v2.0 (视频生产存证版)** 🚀 | **v3.x (视频进阶套件)** 🎬 | **v4.0 (生图/修图存证版)** 🎨 |
 | :--- | :--- | :--- | :--- | :--- |
-| **版本归档文件** | [`v1.0_minimax_h3_l4_benchmark_webp.ipynb`](./v1.0_minimax_h3_l4_benchmark_webp.ipynb)<br>（实测存证：[`v1_0_...webp.ipynb`](./v1_0_minimax_h3_l4_benchmark_webp.ipynb)） | [`v1.5_minimax_h3_l4_legacy_mp4.ipynb`](./v1.5_minimax_h3_l4_legacy_mp4.ipynb) | [`v2_0_minimax_h3_l4_production_mp4.ipynb`](./v2_0_minimax_h3_l4_production_mp4.ipynb) | [`v2.0_minimax_h3_l4_production_mp4.ipynb`](./v2.0_minimax_h3_l4_production_mp4.ipynb) |
-| **出片格式** | **动态 WebP** (`SaveAnimatedWEBP`) | **MP4 视频** (`SaveVideo`) | **MP4 视频** (原生 32kHz 立体声) | **MP4 视频** (原生 32kHz 立体声) |
-| **音频支持** | ❌ 无音频（未加载音频 VAE） | ✅ 有音频 (`VAEDecodeAudio`) | ✅ 原生 32kHz 双声道同频出片 | ✅ 原生 32kHz 双声道同频出片 |
-| **采样器架构** | 双路 `KSampler (cfg=3.0)` | 双路 `KSampler (cfg=3.0)` | **单路无 CFG (`BasicGuider`, CFG=1.0)** | **单路无 CFG (`BasicGuider`, CFG=1.0)** |
-| **DiT 前向次数**| 16 次 / shot (8步×2路) | 16 次 / shot (8步×2路) | **8 次 / shot (计算量腰斩)** | **8 次 / shot (计算量腰斩)** |
-| **推荐分辨率** | 960x544 | 1344x768 (像素多 97.6%) | **960x544 (L4 黄金规格)** | **960x544 (L4 黄金规格)** |
-| **权重量化方案** | `int8_convrot` + `nvfp4` | `int8_convrot` + `nvfp4` | **CUDA 13.0 原生 `int8_convrot`** | **CUDA 自适应 (`fp8_scaled` / `int8`)** |
-| **单镜头实测耗时**| - 960x544: **315.8 秒**<br>- 1344x768: **874 ~ 875 秒** | **631+ 秒 (严重超时)** | **冷启 243.5s / 稳态 165.4 秒** (实测存证) | **稳态 ~165 秒** (实测基准) |
-| **3镜批处理耗时**| 2,065 秒 (~34.4 分钟) | 超时中断 (≥30 分钟) | **574.6 秒 (9.58 分钟)** (实测存证) | **~9.5 分钟** (实测基准) |
-| **实际算力消耗** | ~1.11 CU / 3 镜 (单镜 0.17~0.47 CU) | 浪费 >1.0 CU | **0.309 CU / 3 镜 (稳态 0.089 CU/镜)** | **~0.089 CU / 镜** |
-| **模型加载速度** | ~136 秒 (HF 直连 NVMe + 双校验) | Drive 软链接受限 FUSE 延迟 | **136.32 秒** (HF 直连 NVMe 极速就绪) | 本地 NVMe 优先 + Drive 容灾 |
-| **适用场景** | 极限验证硬件与算力基准 | 仅供排错与对照实验 | 真实出片与音画预览存证 | 工业级无人值守批量生产 (干净模板) |
+| **版本归档文件** | [`v1.0_minimax_h3_l4_benchmark_webp.ipynb`](./v1.0_minimax_h3_l4_benchmark_webp.ipynb) | [`v2_0_minimax_h3_l4_production_mp4.ipynb`](./v2_0_minimax_h3_l4_production_mp4.ipynb) | [`v3.1_minimax_h3_i2v.ipynb`](./v3.1_minimax_h3_i2v.ipynb) 等 | [`v4_0_minimax_h3_image_colab_demo.ipynb`](./v4_0_minimax_h3_image_colab_demo.ipynb) |
+| **任务模态** | 文本生成视频 (T2V) | 文本生成视频 (T2V) + 32kHz 立体声 | I2V / FLF2V / Ref2VA 视频 | **超高分辨率生图 + 多图指令编辑** |
+| **核心执行引擎**| ComfyUI 后台无头渲染 | ComfyUI 后台无头渲染 | ComfyUI 生产工作流 | **`stable-diffusion.cpp` (`sd-cli`)** |
+| **是否依赖 ComfyUI**| 是 | 是 | 是 | **否（纯 C++/CUDA 二进制，免服务）** |
+| **采样步数与 CFG** | 8 步，双路 CFG=3.0 | 8 步 Turbo，单路无 CFG (1.0) | 8 步 Turbo，单路无 CFG (1.0) | **6 步 PDD 蒸馏，单路无 CFG (1.0)** |
+| **推荐规格与尺寸** | 960x544, 124 帧 | 960x544, 124 帧 | 960x544, 124 帧 | **2048x2048 (最高支持 4096x4096 16MP)** |
+| **权重量化方案** | `int8_convrot` + `nvfp4` | CUDA 自适应 (`int8` / `fp8`) | CUDA 自适应 (`int8` / `fp8`) | **DiT `int8_convrot` + LLM `Q4_K_M` GGUF** |
+| **单任务实测耗时**| 315.8 秒 | **165.4 秒 (稳态)** | 165~280 秒 | **文生图 157.8 秒 / 指令修图 226.1 秒** |
+| **实际算力消耗** | ~0.17 CU / 镜 | **~0.089 CU / 镜** | ~0.089~0.15 CU / 镜 | **~0.085 CU / 图 (修图 ~0.12 CU)** |
+| **权重就绪方式** | HF 直连 NVMe + 校验 | HF 直连 NVMe (136s) | HF 直连 NVMe | **HF 直连 NVMe (直拉约 1~2 分钟)** |
+| **产物交付形态** | 动态 WebP | MP4 视频 + 32kHz 音频 | MP4 视频 | **2048x2048 电影级 PNG (自动落 Drive)** |
 
 ---
 

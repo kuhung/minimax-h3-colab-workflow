@@ -1,0 +1,31 @@
+{
+  "id": "flf2v_morph_transition",
+  "mode": "flf2v",
+  "title": "怀表机芯至全息星图仪形态演变转场 (FLF2V 首尾端点控制)",
+  "description": "首帧为黑曜石展台上的精密机械怀表，尾帧为同透视同焦距下的悬浮发光全息量子星图仪。在潜空间中规划平滑时序演变，彻底消除生硬交叉溶解的渐变融化Bug。",
+  "first_frame": "outputs/showcase/multimodal/flf2v_morph_start.png",
+  "start_image": "outputs/showcase/multimodal/flf2v_morph_start.png",
+  "last_frame": "outputs/showcase/multimodal/flf2v_morph_end.png",
+  "end_image": "outputs/showcase/multimodal/flf2v_morph_end.png",
+  "width": 960,
+  "height": 544,
+  "length": 124,
+  "steps": 8,
+  "seed": 302,
+  "sampler_name": "res_multistep",
+  "scheduler": "simple",
+  "cfg": 1.0,
+  "prompt": "Seamless metamorphosis transition in a dark studio. The precision mechanical pocket watch movement on the obsidian pedestal smoothly unfolds its gear train, its metallic components dissolving into floating glowing rings and particles, reforming into a holographic quantum astrolabe in the exact same perspective and center anchor.",
+  "negative_prompt": "cross-dissolve fade, simple opacity blend, blurry double exposure, jump cut, camera sudden shake, flickering, low resolution",
+  "transition_control_rules": [
+    "Strictly maintain perspective angle and optical center anchor between start and end frames",
+    "Interpolate intermediate mechanical unfolding and particle fluid motion in latent space",
+    "Reject traditional two-layer alpha transparency crossfades"
+  ],
+  "swap_guide": {
+    "step_1": "准备两张【同透视、同中心锚点、同光影朝向】的起始帧与结束帧图像（如：人物闭眼到睁眼、含苞待放到花朵盛开、毛坯模型到赛博完工态）。",
+    "step_2": "将两张图像分别配置到 'first_frame' 与 'last_frame' (或 start_image / end_image)，脚本会自动通过 validate_flf2v_pair 校验尺寸与亮度色偏。",
+    "step_3": "在 prompt 中详细描写【中间过渡态的物理演变过程】（例如：'逐层展开'、'融汇为粒子流'、'光脉冲充能'），杜绝仅写两个主体名字。",
+    "step_4": "运行生成，享受平滑无断层的潜空间流体演化效果！"
+  }
+}
