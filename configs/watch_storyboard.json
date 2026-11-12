@@ -1,0 +1,24 @@
+[
+  {
+    "id": "01_reveal",
+    "mode": "i2v",
+    "start": "wide",
+    "seed": 501,
+    "prompt": "Slow gentle camera push toward the watch. A warm highlight moves across the metal bezel. Preserve the dial, hands and watch geometry. No dialogue."
+  },
+  {
+    "id": "02_detail",
+    "mode": "i2v",
+    "start": "detail",
+    "seed": 502,
+    "prompt": "Continue smoothly from the supplied first frame. Slowly push closer toward the watch dial. The second hand moves clockwise, a soft light sweeps across the crystal. Preserve all dial markings and proportions. No dialogue."
+  },
+  {
+    "id": "03_finish",
+    "mode": "flf2v",
+    "start": "detail",
+    "end": "wide",
+    "seed": 503,
+    "prompt": "The camera smoothly pulls back from the dial close-up to reveal the complete watch, ending in a steady product shot. Preserve the same watch throughout. No dialogue."
+  }
+]

@@ -28,6 +28,7 @@
 | **GPU 门槛** | 要求 CUDA Compute Capability >= `8.0`（如 L4 24GB `sm_89`）。T4（`7.5`）缺少量化算子支持，[scripts/check_gpu.py](scripts/check_gpu.py) 会阻断运行；CLI 传入 `--auto-shutdown`（或 `v2.0` Notebook `AUTO_SHUTDOWN = True`）时调用 `runtime.unassign()` 释放实例。 |
 | **L4 视频基准（`v2_0` 存证）** | 规格：`960×544`、124 帧、24fps、8 步 Turbo、`BasicGuider`。首镜冷启动 `243.5s`，后两镜稳态 `165.3s` / `165.5s`（均值 `165.4s`）；3 镜总计 `574.6s`，日志记录消耗 `0.309 CU`（面板基线 `1.94 CU/h`，折算稳态约 `0.089 CU/镜`、含冷启三镜均摊约 `0.103 CU/镜`）。冷启、下载、空闲与返工另计，不构成月产量保证；外部资费与实时 CU 扣费率以 Colab 官网及当前面板为准。 |
 | **显存参考（`v1_0` 烟测）** | `v1_0` 在 `960×544` 烟测下 `nvidia-smi` 记录去噪稳态显存 `21.77 GB`、峰值 `21.91 GB`（该次 L4 可用 `22.03 GB`，余量 `0.12 GB`）；切换至 `1344×768` 时耗时升至 `874.1~875.4s`，故生产基准锁定为 `960×544`。 |
+| **L4 多模态首镜实测（V3）** | I2V（8 步）258.1s、FLF2V（8 步）273.2s、Ref2VA（4 步）369.2s；均为 960×544、124 帧、24fps 单次首镜记录，含首镜加载，不代表稳态。按历史 1.94 CU/h 推算分别约 0.1391 / 0.1472 / 0.1990 CU，非本次面板实扣。详见 [实测记录](docs/minimax-h3-facts-2026-11-12.md)。 |
 | **L4 图像基准（`v4_0` 存证）** | 使用 `stable-diffusion.cpp` (`sd-cli`)、`2048×2048`、6 步 PDD、`CFG=1.0`：文生图 `157.8s`（约 `0.085 CU`），基于 `<Picture 1>` 指令修图 `226.1s`（约 `0.122 CU`）。 |
 | **模型拉取与 Drive 缓存** | `v2.0`/`v4.0` Colab Notebook 优先从 HuggingFace 直拉到本地 NVMe 并备份/回退 Google Drive；独立脚本 [scripts/download_models.py](scripts/download_models.py) 优先检测并复用 Drive 缓存后再回退 HuggingFace 直拉。 |
 | **推荐采样配置** | 视频使用 `KSamplerSelect (res_multistep)` + `BasicScheduler (simple)` + `BasicGuider (cfg=1.0)`；图像使用 `sd-cli` `--sampling-method euler --sigmas minimax-h3-image --cfg-scale 1.0 --steps 6`。 |

@@ -45,7 +45,7 @@
 
 ## 5. Repository Verified Execution Baselines (Direct Colab Notebook Logs)
 
-Only the 3 executed notebooks below have recorded Colab output logs in this repository (`v1.0`, `v1.5`, `v2.0`, `v2.0_test`, `v3.1`, `v3.2`, `v3.3`, `v4.0` template files remain unexecuted blueprints with 0 cell outputs):
+The 3 original executed notebooks below have recorded Colab output logs; V3 execution records are listed in the added V3 section (`v1.0`, `v1.5`, `v2.0`, `v2.0_test`, `v4.0` template files remain unexecuted blueprints with 0 cell outputs):
 
 - **`notebooks/v1_0_minimax_h3_l4_benchmark_webp.ipynb`** (NVIDIA L4 `22.03 GB` VRAM):
   - **Cell 12 Smoke Test** (`960×544`, `CFG=3.0`): `393.78s`; denoising steady VRAM `21.77 GB`, peak VRAM `21.91 GB` (`0.12 GB` headroom).
@@ -63,3 +63,32 @@ Only the 3 executed notebooks below have recorded Colab output logs in this repo
   - **Weights**: `minimax_h3_image_pruned_int8_convrot.safetensors` (`19.54 GB`), `vae_fp16` (`1.09 GB`), `qwen3vl_32b_minimax_h3-Q4_K_M.gguf` (`16.97 GB`).
   - **Demo 1 (Text-to-Image, `2048×2048`, `6 steps`, `CFG=1.0`)**: **`157.8s`** total (`generate_image 149.09s`, `vae decode 8.27s`, `~0.085 CU` @ `1.94 CU/h`).
   - **Demo 2 (Instruction Image Edit, `2048×2048`, `<Picture 1>`)**: **`226.1s`** total (`generate_image 217.53s`, `vae decode 9.93s`, `~0.122 CU` @ `1.94 CU/h`).
+
+
+## V3 多模态 L4 实测记录（2026-11-12）
+
+三种模式均已保留执行输出与内嵌 MP4。配置为 NVIDIA L4（设备总显存 22.49 GB）、INT8 ConvRot、960×544、124 帧、24fps、BasicGuider。每种模式仅记录一次首镜运行；以下耗时从提交任务后开始计时，包含首镜加载及推理，不代表稳态性能。
+
+| 模式 | Turbo 步数 | 首镜任务耗时 | 推算 CU | 五个权重加载阶段耗时 |
+|---|---:|---:|---:|---:|
+| I2V | 8 | 258.1 秒 | 0.1391 | 122 秒 |
+| FLF2V | 8 | 273.2 秒 | 0.1472 | 122 秒 |
+| Ref2VA | 4 | 369.2 秒 | 0.1990 | 118 秒 |
+
+CU 按历史费率 1.94 CU/h × 任务秒数 / 3600 推算，并非本次面板实扣；不包含安装、下载、启动服务和空闲。权重阶段耗时来自日志时间戳，包含校验，为单次网络环境观察。22.49 GB 是设备容量，未采集本次峰值显存。Ref2VA 使用橙色小车横向行驶素材，生成结果有可见位移；尚未通过对照实验隔离提示词和参考视频各自作用。I2V / FLF2V 的完成日志与 MP4 存证证明链路执行完成，效果质量另行验收。
+
+执行存证：
+
+- [I2V](../notebooks/v3_1_minimax_h3_i2v.ipynb)
+- [FLF2V](../notebooks/v3_2_minimax_h3_flf2v.ipynb)
+- [Ref2VA](../notebooks/v3_3_minimax_h3_ref2va.ipynb)
+
+
+## V5 三镜头接续实测（2026-11-12）
+
+执行存证：[v5_0 腕表分镜](../notebooks/v5_0_minimax_h3_watch_storyboard.ipynb)。本次使用上一镜实际尾帧接续下一镜，第三镜约束全貌终点；原生音轨做切点交叉淡化，未提供统一 BGM。
+
+- 三镜耗时：265.4 / 183.5 / 195.2 秒，合计约 644.1 秒；包含各镜输出检查与 Drive 保存。按历史 1.94 CU/h 推算约 0.3471 CU，不包含环境安装、下载和空闲，也非本次面板实扣。
+- 从服务就绪 14:17:22 到成片保存 14:28:10，约 648 秒。日志确认成片保存、运行时释放调用及 Drive 刷盘完成。
+- 提取 Notebook 内嵌成片检查：H.264、960×544、373 帧、15.541667 秒；AAC、32kHz 双声道。实际成片比三镜理论合计 372 帧多 1 帧，尚未归因。
+- 已检查每秒抽帧，构图随推进与拉远变化；该检查不等于逐帧连续性验收。音轨淡化分支执行成功，尚不能据此宣称音乐旋律连续；统一 BGM 分支未在本次运行中验证。

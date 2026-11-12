@@ -35,6 +35,9 @@ TURBO_STEPS = {turbo_steps}                   # 采样步数: 8 (I2V/FLF2V 推�
 AUTO_SHUTDOWN = True             # 全部完成后自动执行 runtime.unassign() 释放实例停止扣费
 WATCHDOG_HOURS = 2.0             # 算力看门狗硬熔断上限（小时），防止异常卡死消耗算力
 
+BACKUP_WEIGHTS_TO_DRIVE = False  # 默认直拉 NVMe；需要持久化备份时开启
+ALLOW_DRIVE_FALLBACK = True       # HF 下载失败时尝试完整 Drive 缓存
+
 DIFFUSION_VARIANT = "auto"       # 权重选型: "auto" (L4 下自动匹配 fp8_scaled 消除慢回退)
 SAMPLER_NAME = "res_multistep"   # 官方推荐采样器: "res_multistep" (或 "euler")
 
@@ -121,22 +124,45 @@ log("🎉 硬件门禁验证通过，允许运行！")
 '''
 
 CELL_COMFY = r'''# ==================== 安装 ComfyUI 核心依赖与 PyAV ====================
+# 素材准备已创建 COMFY_ROOT/input，不能直接 git clone 到非空目录。
+# 先克隆至临时目录，成功后合并代码，保留已有 input/models/output。
+import tempfile
 if not (COMFY_ROOT / "main.py").exists():
     log("📦 正在克隆官方 ComfyUI 仓库...")
-    subprocess.run(["git", "clone", "--depth", "1", "https://github.com/comfyanonymous/ComfyUI.git", str(COMFY_ROOT)], check=True)
-    log("📦 正在安装 ComfyUI 基础依赖...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", str(COMFY_ROOT / "requirements.txt")], check=True)
+    with tempfile.TemporaryDirectory(prefix="comfy-install-", dir=str(COMFY_ROOT.parent)) as tmp:
+        checkout = Path(tmp) / "ComfyUI"
+        result = subprocess.run(
+            ["git", "clone", "--depth", "1", "https://github.com/comfyanonymous/ComfyUI.git", str(checkout)],
+            capture_output=True, text=True,
+        )
+        if result.returncode:
+            raise RuntimeError(f"ComfyUI 克隆失败，Git 原始错误：\n{result.stderr}")
+        COMFY_ROOT.mkdir(parents=True, exist_ok=True)
+        for entry in checkout.iterdir():
+            target = COMFY_ROOT / entry.name
+            if entry.is_dir():
+                shutil.copytree(entry, target, dirs_exist_ok=True)
+            else:
+                shutil.copy2(entry, target)
 else:
-    log("✅ 检测到 ComfyUI 目录已就绪")
+    log("✅ 检测到 ComfyUI 代码已就绪")
 
-subprocess.run([sys.executable, "-m", "pip", "install", "-q", "av", "huggingface_hub", "safetensors", "accelerate", "Pillow"], check=True)
+# 每次确保依赖安装完成，支持上次安装中断后重跑。
+log("📦 正在检查安装 ComfyUI 基础依赖...")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", str(COMFY_ROOT / "requirements.txt")], check=True)
+
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "av", "huggingface_hub", "safetensors", "accelerate", "Pillow", "tqdm"], check=True)
 log("✅ ComfyUI 核心与 PyAV 依赖就绪！")
 '''
 
 def get_cell_models(mode: str, turbo_steps: int = 8):
-    return f'''# ==================== 模型安全校验与秒级软链接 (精确字节 + 头部双校验) ====================
+    return f'''# ==================== 模型 NVMe 优先加载与完整性校验 (精确字节 + 头部双校验) ====================
 import struct
+os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
 from huggingface_hub import hf_hub_download
+from huggingface_hub.utils import enable_progress_bars
+from tqdm.auto import tqdm
+enable_progress_bars()
 
 EXACT_SIZES = {{
     "diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors": 20970379616,
@@ -201,6 +227,8 @@ def check_safetensors_file(file_path: Path, expected_size: int) -> bool:
             if len(header_bytes) < 8:
                 return False
             hlen = struct.unpack("<Q", header_bytes)[0]
+            if not 0 < hlen <= min(expected_size - 8, 100 * 1024 * 1024):
+                return False
             header = json.loads(f.read(hlen).decode("utf-8"))
         max_end = max(v["data_offsets"][1] for k, v in header.items() if k != "__metadata__")
         return (8 + hlen + max_end) == expected_size
@@ -211,45 +239,71 @@ log("=" * 68)
 log(f"📦 MiniMax H3 权重挂载检测 (模式: {mode.upper()}) | 选型: {{ACTUAL_VARIANT}}")
 log("=" * 68)
 
-for rel_path, subfolder, exact_bytes in MODELS_SPEC:
-    fname = Path(rel_path).name
-    dst_dir = LOCAL_MODELS / subfolder
-    dst_dir.mkdir(parents=True, exist_ok=True)
-    dst_link = dst_dir / fname
-
-    if not dst_link.is_symlink() and dst_link.is_file() and check_safetensors_file(dst_link, exact_bytes):
-        log(f"   ✅ 本地 NVMe 物理就绪: {{fname}}")
-        continue
-
-    drive_file = DRIVE_MODELS / subfolder / fname
-    if drive_file.exists() and check_safetensors_file(drive_file, exact_bytes):
-        log(f"   ⚡ 命中 Google Drive 完整缓存: {{fname}}，快速拷贝至 NVMe...")
-        if dst_link.is_symlink() or dst_link.exists():
-            dst_link.unlink()
-        shutil.copy2(drive_file, dst_link)
-        if check_safetensors_file(dst_link, exact_bytes):
-            log(f"   ✅ 从 Drive 恢复完成: {{fname}}")
-            continue
-
-    log(f"   🌐 从 HuggingFace 下载: {{rel_path}} ({{exact_bytes / (1024**3):.2f}} GiB)...")
-    dl = hf_hub_download(repo_id="Comfy-Org/MiniMax-H3", filename=rel_path, local_dir=str(LOCAL_MODELS), local_dir_use_symlinks=False, resume_download=True)
-    dl_p = Path(dl)
-    if dl_p.resolve() != dst_link.resolve():
-        shutil.move(str(dl_p), str(dst_link))
-    if not check_safetensors_file(dst_link, exact_bytes):
-        raise RuntimeError(f"❌ 文件校验失败: {{fname}}")
-    log(f"   ✅ 下载完成并通过校验: {{fname}}")
-
+def copy_with_progress(src, dst, desc):
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    partial = dst.with_name(dst.name + ".partial")
     try:
-        drive_file.parent.mkdir(parents=True, exist_ok=True)
-        tmp_drive = drive_file.with_suffix(".safetensors.partial")
-        shutil.copyfile(dst_link, tmp_drive)
-        tmp_drive.replace(drive_file)
-        log(f"   💾 已备份至 Drive 容灾缓存: {{drive_file.name}}")
-    except Exception as e:
-        log(f"   ⚠️ 备份到 Drive 略过: {{e}}")
+        with src.open("rb") as reader, partial.open("wb") as writer, tqdm(
+            total=src.stat().st_size, unit="B", unit_scale=True,
+            unit_divisor=1024, desc=desc
+        ) as progress:
+            while True:
+                chunk = reader.read(32 * 1024 * 1024)
+                if not chunk:
+                    break
+                writer.write(chunk)
+                progress.update(len(chunk))
+        partial.replace(dst)
+    finally:
+        partial.unlink(missing_ok=True)
 
-log(f"🎉 全部 5 大核心模型权重秒级就绪！")
+
+def ensure_weight_fast(rel_path, subfolder, exact_bytes):
+    fname = Path(rel_path).name
+    local_file = LOCAL_MODELS / subfolder / fname
+    drive_file = DRIVE_MODELS / subfolder / fname
+    local_file.parent.mkdir(parents=True, exist_ok=True)
+    if not local_file.is_symlink() and check_safetensors_file(local_file, exact_bytes):
+        log(f"✅ 本地 NVMe 已就绪: {{fname}}")
+        return local_file
+
+    # 避免旧软链接把下载或拷贝重定向到 Drive。
+    if local_file.is_symlink() or local_file.exists():
+        local_file.unlink()
+    free_bytes = shutil.disk_usage(LOCAL_MODELS).free
+    if free_bytes < exact_bytes:
+        raise RuntimeError(f"NVMe 空间不足: {{fname}} 需要 {{exact_bytes}} 字节，可用 {{free_bytes}}")
+    try:
+        log(f"⬇️ HF 直拉到 NVMe: {{rel_path}} ({{exact_bytes / 1024**3:.2f}} GiB)")
+        downloaded = Path(hf_hub_download(
+            repo_id="Comfy-Org/MiniMax-H3", filename=rel_path,
+            local_dir=str(LOCAL_MODELS / "_hf_cache"),
+        ))
+        if not check_safetensors_file(downloaded, exact_bytes):
+            downloaded.unlink(missing_ok=True)
+            raise RuntimeError(f"HF 权重完整性校验失败: {{fname}}")
+        shutil.move(str(downloaded), str(local_file))
+    except Exception as download_error:
+        if not ALLOW_DRIVE_FALLBACK or not check_safetensors_file(drive_file, exact_bytes):
+            raise RuntimeError(f"无法加载权重 {{fname}}: HF 下载失败且无可用 Drive 回退") from download_error
+        log(f"⚠️ HF 下载失败: {{download_error}}; 从 Drive 恢复 {{fname}}")
+        copy_with_progress(drive_file, local_file, "Drive → NVMe")
+        if not check_safetensors_file(local_file, exact_bytes):
+            local_file.unlink(missing_ok=True)
+            raise RuntimeError(f"Drive 恢复校验失败: {{fname}}")
+
+    if BACKUP_WEIGHTS_TO_DRIVE and not check_safetensors_file(drive_file, exact_bytes):
+        try:
+            copy_with_progress(local_file, drive_file, "NVMe → Drive 可选备份")
+        except Exception as backup_error:
+            log(f"⚠️ Drive 备份失败，本地权重仍可使用: {{backup_error}}")
+    log(f"✅ 权重通过精确字节与 safetensors 头部校验: {{fname}}")
+    return local_file
+
+
+for rel_path, subfolder, exact_bytes in MODELS_SPEC:
+    ensure_weight_fast(rel_path, subfolder, exact_bytes)
+log("🎉 全部 5 个模型权重已就绪于本地 NVMe")
 '''
 
 CELL_START_COMFY = r'''# ==================== 启动 ComfyUI 守护服务与前置节点预检 ====================
@@ -773,77 +827,93 @@ def build_v3_3():
 
 ---
 ### 🔄 即插即用（Swap & Run）快速指引：
-1. **开箱即用**：直接点击「全部运行」，脚本内置定妆角色图、24fps 运镜视频与 32kHz 立体声脉冲音频，**零上传即可一键跑通**！
+1. **开箱即用**：直接点击「全部运行」，脚本内置橙色小车图、24fps 横向行驶参考视频与 32kHz 电机声，**零上传即可一键跑通**！
 2. **替换自己的素材**：在【步骤 4】中填入 `CUSTOM_REF_IMAGE`、`CUSTOM_REF_VIDEO`、`CUSTOM_REF_AUDIO` 即可无缝切换！
 """
 
     cell_swap = r'''# ==================== 步骤 4：🔄 替换素材与提示词 (Swap & Run 核心单元格) ====================
-CUSTOM_REF_IMAGE = ""  # 留空自动生成角色定妆基准图 (<Picture 1>)
-CUSTOM_REF_VIDEO = ""  # 留空自动生成 24fps 环绕推镜参考视频 (<Video 1>)
-CUSTOM_REF_AUDIO = ""  # 留空自动生成 32kHz 独立低频脉冲音频 (<Audio 2>)
-CUSTOM_PROMPT = ""     # 留空使用官方引用提示词
+CUSTOM_REF_IMAGE = ""  # 留空生成橙色小车参考图
+CUSTOM_REF_VIDEO = ""  # 留空生成小车从左向右行驶的 24fps 参考视频
+CUSTOM_REF_AUDIO = ""  # 留空生成低频电机声
+CUSTOM_PROMPT = ""
 
 DEFAULT_PROMPT = (
-    "The camera replicates the precise 24fps orbiting push tracking of <Video 1>. "
-    "The subject preserves the character identity, hair, and costume styling of <Picture 1>. "
-    "Environmental soundscape syncs with the room ambience of <Audio 1>, "
-    "layered with the deep sub-bass rhythmic pulse from <Audio 2>."
+    "A small orange toy delivery rover with two black wheels and a cyan windshield, "
+    "matching <Picture 1>, drives steadily from the left side to the right side of the frame "
+    "following the clear horizontal movement in <Video 1>. "
+    "Its wheels rotate as it travels across the floor. Fixed wide camera, full vehicle visible, "
+    "continuous visible movement throughout the shot. "
+    "Soft motor hum matching <Audio 2>, with the quiet background ambience of <Audio 1>."
 )
 
 from PIL import Image, ImageDraw
-import subprocess, shutil
+import subprocess, shutil, math
 
 LOCAL_ASSETS_DIR = Path("/content/assets")
 LOCAL_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
-REF_IMAGE_PATH = LOCAL_ASSETS_DIR / "ref2va_subject_anchor.png"
-REF_VIDEO_PATH = LOCAL_ASSETS_DIR / "ref2va_motion_ref_24fps.mp4"
-REF_AUDIO_PATH = LOCAL_ASSETS_DIR / "ref2va_pulse_audio.wav"
+REF_IMAGE_PATH = LOCAL_ASSETS_DIR / "ref2va_rover_anchor.png"
+REF_VIDEO_PATH = LOCAL_ASSETS_DIR / "ref2va_rover_motion_24fps.mp4"
+REF_AUDIO_PATH = LOCAL_ASSETS_DIR / "ref2va_motor_audio.wav"
 
 def generate_default_ref2va_suite():
-    w, h = 960, 544
-    cx, cy = w // 2, h // 2
+    w, h, fps, frames = 960, 544, 24, 124
+    duration = frames / fps
+    def draw_frame(index):
+        img = Image.new("RGB", (w, h), (205, 220, 230))
+        draw = ImageDraw.Draw(img)
+        draw.rectangle((0, 380, w, h), fill=(150, 160, 170))
+        for x in range(0, w, 120):
+            draw.line((x, 380, x, h), fill=(120, 130, 140), width=2)
+        cx = 170 + round(620 * index / (frames - 1))
+        draw.ellipse((cx-105, 398, cx+105, 426), fill=(110, 120, 130))
+        draw.rounded_rectangle((cx-100, 285, cx+100, 385), radius=24, fill=(245, 125, 30), outline=(120, 65, 20), width=4)
+        draw.rounded_rectangle((cx-60, 230, cx+55, 310), radius=16, fill=(245, 125, 30), outline=(120, 65, 20), width=4)
+        draw.rectangle((cx-40, 248, cx+35, 280), fill=(30, 170, 210))
+        draw.rectangle((cx+80, 320, cx+99, 340), fill=(255, 245, 180))
+        for wheel_x in (cx-62, cx+62):
+            draw.ellipse((wheel_x-30, 355, wheel_x+30, 415), fill=(25, 30, 35))
+            angle = index * 0.23
+            dx, dy = 22*math.cos(angle), 22*math.sin(angle)
+            draw.line((wheel_x-dx, 385-dy, wheel_x+dx, 385+dy), fill=(210, 215, 220), width=5)
+        return img
 
-    # 1. Subject Anchor Image
-    img = Image.new("RGB", (w, h), (14, 16, 22))
-    draw = ImageDraw.Draw(img)
-    draw.polygon([(cx - 180, h), (cx - 130, cy + 90), (cx + 130, cy + 90), (cx + 180, h)], fill=(28, 32, 44))
-    draw.rectangle([cx - 30, cy + 30, cx + 30, cy + 100], fill=(215, 175, 145))
-    draw.ellipse([cx - 65, cy - 90, cx + 65, cy + 45], fill=(225, 185, 155))
-    draw.ellipse([cx - 72, cy - 110, cx + 72, cy - 20], fill=(25, 25, 30))
-    draw.arc([cx - 67, cy - 92, cx + 67, cy + 47], start=120, end=240, fill=(0, 210, 255), width=4)
-    img.save(str(REF_IMAGE_PATH), "PNG")
-
-    # 2. 32kHz Pulse Audio
+    draw_frame(0).save(REF_IMAGE_PATH)
     ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
     subprocess.run([
-        ffmpeg_bin, "-y", "-f", "lavfi", "-i", "sine=frequency=60:duration=5.166",
-        "-f", "lavfi", "-i", "sine=frequency=180:duration=5.166",
-        "-filter_complex", "[0:a][1:a]amerge=inputs=2,aformat=sample_rates=32000:channel_layouts=stereo",
+        ffmpeg_bin, "-y", "-v", "error", "-f", "lavfi", "-i",
+        f"sine=frequency=90:duration={duration}", "-ar", "32000", "-ac", "2",
         "-c:a", "pcm_s16le", str(REF_AUDIO_PATH)
-    ], capture_output=True, check=True)
-
-    # 3. 24fps Motion Video (with attached ambient sound)
-    vf = f"testsrc=duration=5.166:size={w}x{h}:rate=24,drawbox=x='(w-160)/2 + 100*sin(2*PI*t/5)':y='(h-160)/2':w=160:h=160:color=cyan@0.8:t=fill,format=yuv420p"
+    ], check=True)
+    # 逐帧绘制真实位移，不依赖 drawbox 对时间表达式的支持。
+    video_frames = LOCAL_ASSETS_DIR / "rover_frames"
+    video_frames.mkdir(exist_ok=True)
+    for index in range(frames):
+        draw_frame(index).save(video_frames / f"{index:04d}.png")
     subprocess.run([
-        ffmpeg_bin, "-y", "-f", "lavfi", "-i", vf,
-        "-f", "lavfi", "-i", "sine=frequency=110:duration=5.166",
-        "-c:v", "libx264", "-r", "24", "-c:a", "aac", "-ar", "32000", "-ac", "2",
-        str(REF_VIDEO_PATH)
-    ], capture_output=True, check=True)
+        ffmpeg_bin, "-y", "-v", "error", "-framerate", str(fps),
+        "-i", str(video_frames / "%04d.png"), "-f", "lavfi", "-i",
+        f"sine=frequency=180:duration={duration}", "-frames:v", str(frames),
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
+        "-ar", "32000", "-ac", "2", "-movflags", "+faststart", str(REF_VIDEO_PATH)
+    ], check=True)
+    log("默认素材已生成：橙色小车由左向右移动 620 像素，124 帧，附带音轨")
 
-    log("🎨 程序化合成默认全模态参考三元组 (<Picture 1> + <Video 1> + <Audio 2>) 完成！")
-
-if CUSTOM_REF_IMAGE and CUSTOM_REF_VIDEO and CUSTOM_REF_AUDIO and os.path.exists(CUSTOM_REF_IMAGE):
-    ACTIVE_IMG = Path(CUSTOM_REF_IMAGE)
-    ACTIVE_VID = Path(CUSTOM_REF_VIDEO)
-    ACTIVE_AUD = Path(CUSTOM_REF_AUDIO)
-    log("📥 采用用户提供的全模态参考素材")
+custom_paths = [CUSTOM_REF_IMAGE, CUSTOM_REF_VIDEO, CUSTOM_REF_AUDIO]
+if any(custom_paths):
+    if not all(custom_paths):
+        raise ValueError("自定义模式请同时填写图片、视频和音频路径；默认模式请全部留空")
+    for value in custom_paths:
+        if not Path(value).is_file():
+            raise FileNotFoundError(f"参考素材不存在: {value}")
+    ACTIVE_IMG, ACTIVE_VID, ACTIVE_AUD = map(Path, custom_paths)
 else:
     generate_default_ref2va_suite()
-    ACTIVE_IMG = REF_IMAGE_PATH
-    ACTIVE_VID = REF_VIDEO_PATH
-    ACTIVE_AUD = REF_AUDIO_PATH
-    log("💡 采用内置全模态基准参考素材 (图片+24fps视频+音频)")
+    ACTIVE_IMG, ACTIVE_VID, ACTIVE_AUD = REF_IMAGE_PATH, REF_VIDEO_PATH, REF_AUDIO_PATH
+
+# 推理前先确认输入参考视频确实有可见运动。
+from IPython.display import Video, display
+log("输入参考预览：应看到橙色小车从左向右行驶；生成结果需另行比较")
+display(Video(str(ACTIVE_VID), embed=True))
 
 import re
 def normalize_h3_tags(prompt_str):
