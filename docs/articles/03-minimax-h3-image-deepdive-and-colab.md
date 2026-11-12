@@ -135,7 +135,7 @@ python3 scripts/demo_h3_image.py \
   --output outputs/demo2_edit.png
 ```
 
-想继续查看参数细节或下载校验脚本，可以直接看 [工程仓库总览](../../README.md) 与 [2026-11-12 核验事实台账](../minimax-h3-facts-2026-11-12.md)。
+想继续查看参数细节或下载校验脚本，可以直接看 [工程仓库总览](../../README.md) 与 [2026-11-12 核验数据记录](../minimax-h3-facts-2026-11-12.md)。
 
 ## MiniMax-H3-Image 常见问题
 
@@ -170,4 +170,4 @@ python3 scripts/demo_h3_image.py \
 1. [MiniMax 官方图像模型技术仓库：`MiniMaxAI/MiniMax-H3-Image`](https://huggingface.co/MiniMaxAI/MiniMax-H3-Image)
 2. [ComfyUI 官方 MiniMax 生态文档：`docs.comfy.org`](https://docs.comfy.org/tutorials/video/minimax/minimax-h3)
 3. [Hugging Face Diffusers 模块化合入：`ModularPipeline` PR #15230](https://github.com/huggingface/diffusers/pull/15230)
-4. [本仓库事实台账与 `v4_0` L4 实测存证：`docs/minimax-h3-facts-2026-11-12.md`](../minimax-h3-facts-2026-11-12.md)
+4. [本仓库核验数据记录与 `v4_0` L4 实测日志：`docs/minimax-h3-facts-2026-11-12.md`](../minimax-h3-facts-2026-11-12.md)

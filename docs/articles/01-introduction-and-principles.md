@@ -151,7 +151,7 @@ $$P(A \succ B) = \frac{1}{1 + 10^{(R_B - R_A)/400}}$$
 - 要做多镜头剧本拆解和角色音色克隆的短片，可以上 Seedance 2.5，同时算好 `$34.12/min` 带来的抽卡预算。
 - 直接追求文生视频盲测上限且预算充裕，可以对标 Wan 3.0（`$12.00/min`）。
 
-搞清 MiniMax H3（海螺 3.0）的技术定位后，你可以直接看本项目的 [工程仓库总览](../../README.md)、[v2.0 Colab L4 生产笔记本模板](../../notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb) 与 [2026-11-12 核验事实台账](../minimax-h3-facts-2026-11-12.md)，或者继续读第二篇，拆解 24 GB 单卡上的基准工作流和关键参数设置。
+搞清 MiniMax H3（海螺 3.0）的技术定位后，你可以直接看本项目的 [工程仓库总览](../../README.md)、[v2.0 Colab L4 生产笔记本模板](../../notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb) 与 [2026-11-12 核验数据记录](../minimax-h3-facts-2026-11-12.md)，或者继续读第二篇，拆解 24 GB 单卡上的基准工作流和关键参数设置。
 
 ## MiniMax H3 选型常见问题
 
@@ -188,7 +188,7 @@ $$P(A \succ B) = \frac{1}{1 + 10^{(R_B - R_A)/400}}$$
 [^3]: [MiniMax 官方 GitHub 技术文档：`MiniMax-AI/MiniMax-H3` 33B 单流 DiT 与 12 模态输入规范](https://github.com/MiniMax-AI/MiniMax-H3/blob/main/README.zh-CN.md)
 [^4]: [Comfy-Org 官方技术模型卡：`Comfy-Org/MiniMax-H3` 剪枝模型与 13B 参数剥离机理](https://huggingface.co/Comfy-Org/MiniMax-H3)
 [^5]: [Artificial Analysis 官方视频模型竞技场（AA-Video-T2V v2.1 核对日期：2026-11-12）](https://artificialanalysis.ai/video)
-[^6]: [本仓库事实台账与 L4 实测基准：`docs/minimax-h3-facts-2026-11-12.md` & `docs/RESEARCH_SUMMARY.md`](../minimax-h3-facts-2026-11-12.md)
+[^6]: [本仓库核验数据记录与 L4 实测基准：`docs/minimax-h3-facts-2026-11-12.md` & `docs/RESEARCH_SUMMARY.md`](../minimax-h3-facts-2026-11-12.md)
 [^7]: [上海人工智能实验室：VBench 视频生成全方位评测基准框架 (CVPR 2024)](https://vbench.github.io)
 [^8]: [阿里巴巴通义实验室：Wan 视频生成模型架构与 ComfyUI FLF 首尾帧教程](https://docs.comfy.org/zh/tutorials/video/wan/wan-flf)
 [^9]: [MiniMax H3 官方开源协议：`MiniMax H3 Community License Agreement`](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE)

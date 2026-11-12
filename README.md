@@ -129,7 +129,7 @@ flowchart TD
 - [configs/templates/](configs/templates/) — V3 多模态模板（`I2V` / `FLF2V` / `Ref2VA`）；其引用的 `outputs/showcase/` 示例素材被 `.gitignore` 忽略，使用前可先运行 `python3 scripts/generate_showcase_assets.py` 在本地生成预览基准素材。
 
 ### 文档与实战文章
-- [docs/minimax-h3-facts-2026-11-12.md](docs/minimax-h3-facts-2026-11-12.md) — 外部资费、榜单与仓库实测台账。
+- [docs/minimax-h3-facts-2026-11-12.md](docs/minimax-h3-facts-2026-11-12.md) — 外部资费、榜单与仓库实测数据记录。
 - [docs/RESEARCH_SUMMARY.md](docs/RESEARCH_SUMMARY.md) — 开源方案对比与 `v2.0` 实测分析。
 - [docs/COLAB_MCP_INTEGRATION.md](docs/COLAB_MCP_INTEGRATION.md) — `googlecolab/colab-mcp` 接入与配置说明。
 - [docs/PROMPT_RECIPES.md](docs/PROMPT_RECIPES.md) — 结构化多镜头与环境音提示词示例。

@@ -139,4 +139,4 @@ $$1.94 \times \frac{165.4}{3600} \approx 0.089\ \text{CU}$$
 3. [MiniMax 官方开源集成列表：`awesome-minimax-h3-integration`](https://github.com/MiniMax-AI/awesome-minimax-h3-integration)
 4. [GitHub 开源项目：`cicalooo/ComfyUI-H3-PowerLoraStack` 量化模型 LoRA 加载器](https://github.com/cicalooo/ComfyUI-H3-PowerLoraStack)
 5. [GitHub 开源项目：`rkfg/ComfyUI-MiniMaxH3-ToneCompensate` 多分镜色彩与亮度对齐](https://github.com/rkfg/ComfyUI-MiniMaxH3-ToneCompensate)
-6. [本仓库事实台账与 L4 实测基准：`docs/minimax-h3-facts-2026-11-12.md` & `docs/RESEARCH_SUMMARY.md`](../minimax-h3-facts-2026-11-12.md)
+6. [本仓库核验数据记录与 L4 实测基准：`docs/minimax-h3-facts-2026-11-12.md` & `docs/RESEARCH_SUMMARY.md`](../minimax-h3-facts-2026-11-12.md)
