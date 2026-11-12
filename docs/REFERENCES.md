@@ -11,7 +11,7 @@
 - **核心价值**：将扩散去噪步数从原始 20 至 30 步压缩至 4 步 / 8 步，带来 4 到 5 倍端到端提速，同时原生保留 32kHz 立体声音画同步。
 - **本项目吸收与落地**：
   - [x] 在 `scripts/download_models.py` 中将 8 步 Turbo LoRA 作为默认挂载权重。
-  - [ ] 暴露 `--turbo-steps 4` 参数，为创作者提供 80 秒极速分镜快筛模式。
+  - [x] 暴露 `--turbo-steps`（4 步 / 8 步）参数（已在 `scripts/download_models.py`、`scripts/agent_colab_runner.py`、`scripts/test_shanghai_mp4.py` 中接入 4 步/8 步 LoRA 切换；4 步云端 L4 对照实测待后续补全）。
   - [x] 锁死单路无 CFG（`BasicGuider`, CFG=1.0），彻底消除蒸馏模型在外推 CFG 下的过曝与相位破音。
 
 ---
@@ -23,7 +23,7 @@
   - 验证了如何将多张参考图（1 至 9 张）的特征向量按主体、场景、风格正确传递给 DiT 模型，避免特征混杂。
 - **本项目吸收与落地**：
   - [ ] 提取其多参考图媒体路由逻辑，直接转化为纯 Python / ComfyUI 原生节点的拓扑映射，不引入其第三方自定义节点包，保持零依赖。
-  - [ ] 将其结构化 Prompt 语法（见 `docs/PROMPT_RECIPES.md`）集成进 `scripts/batch_runner.py` 的分镜组装模块中。
+  - [x] 将多镜头结构化 `[Shot i]` 组装逻辑集成进 `scripts/batch_runner.py`（`format_h3_prompt`）；`embedding:` 风格预设与多图自动化路由待进一步扩展（参考 `docs/PROMPT_RECIPES.md`）。
 
 ---
 

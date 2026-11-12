@@ -1,0 +1,29 @@
+{
+  "ignore": [
+    "docs/internal/**",
+    "docs/ROADMAP.md",
+    "docs/SOTA_PLAN_20261107.md",
+    "docs/articles/plan.md",
+    "docs/minimax-h3-facts-*.md"
+  ],
+  "extraDeny": [
+    {
+      "id": "local-path",
+      "pattern": "/Users/kuhung|file:///",
+      "level": "error",
+      "hint": "禁止在对外仓库出现本机绝对路径或 file:// URI"
+    },
+    {
+      "id": "placeholder-repo",
+      "pattern": "your-username",
+      "level": "error",
+      "hint": "替换为实际公开仓库地址或相对路径"
+    },
+    {
+      "id": "unverified-metrics",
+      "pattern": "23\\.95\\s*GB\\+|631\\.2\\s*s|631\\s*秒|1,120\\s*~\\s*3,360|5,600\\s*~\\s*16,800|免费赠送.{0,8}L4",
+      "level": "error",
+      "hint": "与仓库实测日志或 2026-11-12 事实台账不符，禁止写入未实测或已过期承诺"
+    }
+  ]
+}

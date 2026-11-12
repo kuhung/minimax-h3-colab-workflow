@@ -45,28 +45,28 @@ def render_aa_chart(output_path):
     fig = plt.figure(figsize=(13.33, 7.5), facecolor='#FFFFFF')
     add_research_chrome(
         fig,
-        title="AA 视频竞技场核心数据：人类偏好 Elo 评分与商业/自建成本对照",
-        subtitle="基于 Artificial Analysis 官方实测盲测数据与厂商公开费率 (2026)",
-        source_text="数据来源：Artificial Analysis 视频竞技场官方实测榜单及厂商公开费率 [^5] | 视觉呈现：谷粒 · KUHUNG"
+        title="AA 视频竞技场：人类偏好 Elo 评分与商业推理定价对照",
+        subtitle="基于 Artificial Analysis AA-Video-T2V v2.1 榜单与公开 API 费率（核对日期：2026-11-12，以 AA 实时榜单为准）",
+        source_text="数据来源：Artificial Analysis AA-Video-T2V v2.1 (2026-11-12) 及公开 API 定价 | 视觉呈现：谷粒 · KUHUNG"
     )
 
     # Top Factual Summary Box
     c_top = patches.FancyBboxPatch(
-        (0.04, 0.77), 0.92, 0.085,
+        (0.04, 0.745), 0.92, 0.105,
         boxstyle="round,pad=0.010,rounding_size=0.015",
         edgecolor=NAVY, facecolor=BG_CARD, linewidth=1.0, transform=fig.transFigure
     )
     fig.add_artist(c_top)
-    fig.text(0.055, 0.835, "【实测数据摘要】AA Video Arena 人类盲测与官方公布定价 (2026)：",
-             fontsize=9.0, fontweight='bold', color=NAVY, transform=fig.transFigure)
-    fig.text(0.055, 0.805, "• 盲测评分：Wan 3.0 (1192)、Hyperflow H3 (1149)、Seedance 2.5 (1147)、Gemini Omni Flash (1146)、MiniMax H3 768p (1119)；\n"
-                           "• 推理费率：MiniMax H3 768p 官方为 $9.60/min ($0.16/s)，Seedance 2.5 为 $40.82/min ($0.68/s)，本地单卡 L4 硬件折算为 $0.14/min ($0.0023/s)。",
-             fontsize=8.0, color=SLATE_DARK, transform=fig.transFigure)
+    fig.text(0.055, 0.838, "【核验数据摘要】AA-Video-T2V v2.1 实测榜单与公开定价（核对日期：2026-11-12）：",
+             fontsize=9.0, fontweight='bold', color=NAVY, va='top', transform=fig.transFigure, parse_math=False)
+    fig.text(0.055, 0.808, "• 盲测评分：Wan 3.0 (1175±13)、MiniMax H3 768p (1161±13)、Dreamina Seedance 2.5 (1155±13)、MiniMax H3 Max (1149±15)；\n"
+                           "• 公开费率：MiniMax H3 768p 为 $4.80/min ($0.08/s)，Wan 3.0 为 $12.00/min ($0.20/s)，Seedance 2.5 为 $34.12/min ($0.57/s)（以实时榜单为准）。",
+             fontsize=8.0, color=SLATE_DARK, va='top', linespacing=1.45, transform=fig.transFigure, parse_math=False)
 
     # Left: Elo Rating Bar Chart
-    ax1 = fig.add_axes([0.22, 0.16, 0.32, 0.56])
+    ax1 = fig.add_axes([0.23, 0.15, 0.31, 0.51])
     # Right: Pricing per minute Bar Chart
-    ax2 = fig.add_axes([0.64, 0.16, 0.30, 0.56])
+    ax2 = fig.add_axes([0.64, 0.15, 0.30, 0.51])
 
     for ax in [ax1, ax2]:
         ax.spines['top'].set_visible(False)
@@ -76,64 +76,64 @@ def render_aa_chart(output_path):
         ax.xaxis.grid(True, linestyle='--', linewidth=0.7, color=GRID_COLOR)
         ax.set_axisbelow(True)
 
-    # 7 Focused Models from AA Leaderboard
+    # Verified Models from AA-Video-T2V v2.1 Leaderboard (Checked 2026-11-12)
     models_rev = [
-        "Kling 3.0 Omni (快手基准)",
-        "Wan 2.7 (Alibaba)",
-        "MiniMax H3 768p (原生开源)",
-        "Gemini Omni Flash 1.1",
+        "MiniMax H3 Max (闭源高规)",
         "Dreamina Seedance 2.5",
-        "Hyperflow H3 (H3衍生加速)",
-        "Wan 3.0 (Alibaba 旗舰)"
+        "MiniMax H3 768p (开放同源权重)",
+        "Wan 3.0 (Alibaba)"
     ]
-    elos_rev = [1000, 1071, 1119, 1146, 1147, 1149, 1192]
-    ci_rev = [0, 8, 10, 10, 11, 11, 10]
-    samples_rev = ["20,213", "22,001", "8,941", "8,271", "7,099", "5,734", "9,205"]
-    prices_min_rev = [10.91, 16.90, 9.60, 9.64, 40.82, 18.00, 12.00]
+    elos_rev = [1149, 1155, 1161, 1175]
+    ci_rev = [15, 13, 13, 13]
+    prices_min_rev = [9.60, 34.12, 4.80, 12.00]
 
     colors_elo = [
-        CRIMSON,      # Kling
-        SLATE_LIGHT,  # Wan 2.7
-        MAGENTA,      # MiniMax H3 (768p)
-        GREEN,        # Gemini Omni Flash
+        NAVY,         # MiniMax H3 Max
         BLUE,         # Seedance 2.5
-        NAVY,         # Hyperflow H3
+        MAGENTA,      # MiniMax H3 768p
         ORANGE        # Wan 3.0
     ]
 
     y_pos = list(range(len(models_rev)))
-    ax1.barh(y_pos, elos_rev, color=colors_elo, height=0.52, zorder=3)
+    ax1.barh(y_pos, elos_rev, color=colors_elo, height=0.45, zorder=3)
     ax1.set_yticks(y_pos)
-    ax1.set_yticklabels(models_rev, fontsize=8.6, color=SLATE_DARK)
-    ax1.set_xlabel("AA Video Arena 盲测 Elo 等级分", fontsize=8.6, color=SLATE_DARK)
-    ax1.set_xlim(950, 1260)
-    ax1.set_title("视频综合质量盲测评分 (Elo)", fontsize=10.0, fontweight='bold', color=NAVY, pad=8, loc='left')
+    ax1.set_yticklabels(models_rev, fontsize=8.8, color=SLATE_DARK)
+    ax1.set_xlabel("AA-Video-T2V v2.1 盲测 Elo 等级分", fontsize=8.6, color=SLATE_DARK)
+    ax1.set_xlim(1100, 1210)
+    ax1.set_title("视频综合质量盲测评分 (Elo ±95% CI)", fontsize=10.0, fontweight='bold', color=NAVY, pad=8, loc='left')
 
-    for i, (v, ci, s) in enumerate(zip(elos_rev, ci_rev, samples_rev)):
-        bold_flag = 'bold' if i in [2, 5] else 'normal'
-        col = MAGENTA if i == 2 else (NAVY if i == 5 else SLATE_DARK)
-        ci_str = f"±{ci}" if ci > 0 else ""
-        tag = f" {v}{ci_str} (样本 {s})"
-        ax1.text(v + 5, i, tag, va='center', fontsize=7.8, fontweight=bold_flag, color=col)
+    for i, (v, ci) in enumerate(zip(elos_rev, ci_rev)):
+        bold_flag = 'bold' if i in [0, 2] else 'normal'
+        col = MAGENTA if i == 2 else (NAVY if i == 0 else SLATE_DARK)
+        tag = f" {v} (±{ci})"
+        ax1.text(v + 2, i, tag, va='center', fontsize=8.0, fontweight=bold_flag, color=col)
 
     # Right: Cost per minute
-    ax2.barh(y_pos, prices_min_rev, color=colors_elo, height=0.52, zorder=3)
+    ax2.barh(y_pos, prices_min_rev, color=colors_elo, height=0.45, zorder=3)
     ax2.set_yticks(y_pos)
     ax2.set_yticklabels(["" for _ in y_pos])
-    ax2.set_xlabel("官方公布商业费率 (美元 / 分钟)", fontsize=8.6, color=SLATE_DARK)
-    ax2.set_xlim(0, 48)
-    ax2.set_title("商业推理定价对比 (美元/分钟 与 美元/秒)", fontsize=10.0, fontweight='bold', color=NAVY, pad=8, loc='left')
+    ax2.set_xlabel("公开 API 推理费率 (美元 / 分钟)", fontsize=8.6, color=SLATE_DARK)
+    ax2.set_xlim(0, 42)
+    ax2.set_title("商业 API 推理定价对比 (美元/分钟 与 美元/秒)", fontsize=10.0, fontweight='bold', color=NAVY, pad=8, loc='left')
 
     for i, p in enumerate(prices_min_rev):
-        bold_flag = 'bold' if i in [2, 5] else 'normal'
-        col = MAGENTA if i == 2 else (NAVY if i == 5 else SLATE_DARK)
+        bold_flag = 'bold' if i in [0, 2] else 'normal'
+        col = MAGENTA if i == 2 else (NAVY if i == 0 else SLATE_DARK)
         per_sec = p / 60.0
         tag = f" ${p:.2f}/min (${per_sec:.2f}/s)"
-        ax2.text(p + 0.8, i, tag, va='center', fontsize=7.8, fontweight=bold_flag, color=col)
+        ax2.text(p + 0.6, i, tag, va='center', fontsize=8.0, fontweight=bold_flag, color=col, parse_math=False)
 
     # Note at bottom
-    fig.text(0.50, 0.082, "注：本地自建单卡 L4 工作流 (544p 规格) 实测耗时 165.4 秒/镜，单镜 0.089 CU ($0.012)，换算分钟费率约 $0.14/min ($0.0023/s) [^6]",
-             fontsize=7.8, color=SLATE_MID, ha='center', transform=fig.transFigure)
+    fig.text(
+        0.50,
+        0.082,
+        "注：本仓库 Colab L4 (544p 124帧 ≈ 5.17s) 稳态实测 165.4s/镜 (~0.089 CU)；按 Pay-As-You-Go ($9.99/100 CU ≈ $0.10/CU) 折算约 $0.0089/镜 (~$0.10/min 输出时长，不含冷启)。",
+        fontsize=7.6,
+        color=SLATE_MID,
+        ha='center',
+        transform=fig.transFigure,
+        parse_math=False
+    )
 
     fig.savefig(output_path, dpi=300, facecolor='#FFFFFF', bbox_inches='tight')
     plt.close(fig)
@@ -141,6 +141,6 @@ def render_aa_chart(output_path):
 
 
 if __name__ == "__main__":
-    out_file = Path("/Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/articles/assets/chart_01_aa_benchmark.png")
+    out_file = Path(__file__).resolve().parent.parent / "docs" / "articles" / "assets" / "chart_01_aa_benchmark.png"
     out_file.parent.mkdir(parents=True, exist_ok=True)
     render_aa_chart(out_file)

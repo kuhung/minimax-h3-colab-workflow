@@ -29,7 +29,7 @@ try:
     from colab_mcp.session import ColabProxyClient
     from fastmcp import Client
 except ImportError:
-    print("❌ 请使用 /Users/kuhung/.cache/uv/archive-v0/GdcB1QtJmmecTlb9hvyws/bin/python 运行本脚本")
+    print("❌ 未找到 colab_mcp 或 fastmcp 依赖，请使用安装有 colab-mcp 的 Python 环境（如 uvx/venv）运行本脚本")
     sys.exit(1)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")

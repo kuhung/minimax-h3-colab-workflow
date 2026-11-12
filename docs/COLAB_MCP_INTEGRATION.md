@@ -1,22 +1,22 @@
 # Google Colab MCP 深度集成与 Agent 自动化托管方案
 
-> 本文针对项目 [minimax-h3-colab-workflow](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow) 引入官方 [googlecolab/colab-mcp](https://github.com/googlecolab/colab-mcp) 进行系统性评估、架构设计与落地实施，旨在将高摩擦的“人工保姆式点选监控”彻底重构为“Agent 全流程自主调度”。
+> 本文针对项目 [minimax-h3-colab-workflow](../README.md) 引入官方 [googlecolab/colab-mcp](https://github.com/googlecolab/colab-mcp) 进行系统性评估、架构设计与落地实施，旨在将高摩擦的人工点选监控重构为 Agent 自动化调度。
 
 ---
 
 ## 一、 为什么引入 Colab MCP？（核心价值与痛点破局）
 
 ### 1. 原有手动工作流的痛点
-在传统的 Colab 运行模式下，用户需要扮演“人肉运维”：
+在传统的 Colab 运行模式下，用户需要手动操作大量重复步骤：
 - **操作繁琐琐碎**：需要逐个点击 7 个以上的代码单元格（挂载、检卡、下载模型、起服务、配参数、排队渲染）。
 - **监控成本高昂**：MiniMax H3 渲染单镜头需要 3~5 分钟，批量任务（4~8 个镜头）需等待 20~40 分钟，用户必须持续关注页面是否断连。
-- **200 算力单元耗尽风险（致命硬伤）**：任务跑完后，如果用户离开电脑或遗忘点击“断开连接并删除运行时”，Colab 实例会持续空转，导致宝贵的 200 计算单元白白扣光。
+- **Colab 算力单元（CU）闲置消耗风险**：任务跑完后，如果用户离开电脑或遗忘点击“断开连接并删除运行时”，Colab 实例会持续空转消耗 CU（Colab Pro 100 CU/月、Pro+ 600 CU/月、Pay-As-You-Go \$9.99/100 CU）。
 
-### 2. 引入 Colab MCP 后的变革
-引入 `colab-mcp` 后，交互界面由“浏览器网页”跃迁为“与 Agent 对话”：
+### 2. 引入 Colab MCP 后的变化
+引入 `colab-mcp` 后，操作方式从手动点击网页变为向 Agent 下达任务指令：
 - **极简人机交互**：用户只需对 Agent 说：*“帮我用 L4 跑完 `configs/prompts.json` 里的 5 个分镜，完成后自动关机。”*
 - **全流程托管**：Agent 自动建立连接、检验 GPU 门禁、拉取或软链接模型、启动 ComfyUI、分派任务并轮询日志。
-- **算力绝对安全（自动断开）**：Agent 在核验所有产物落盘至 Google Drive 后，自动执行 `runtime.unassign()` 彻底销毁云端实例，杜绝闲置扣费。
+- **可控销毁释放（防闲置扣费）**：Agent 在核验所有产物落盘至 Google Drive 后，按 `--auto-shutdown` 参数调用 `runtime.unassign()` 释放云端实例，防止闲置扣费。
 
 ---
 
@@ -67,7 +67,7 @@ flowchart TD
 ### 1. 客户端 MCP 配置
 在 Antigravity / Gemini CLI 配置文件中增加 `colab-mcp`：
 
-文件路径：`~/.gemini/config/mcp_config.json`（已自动为您配置就绪）
+客户端 MCP 配置文件示例（如 Gemini CLI / Claude Desktop / Cursor 等，按各自路径填写）：
 
 ```json
 {
@@ -96,7 +96,7 @@ uvx git+https://github.com/googlecolab/colab-mcp --help
 
 ## 四、 项目内专属交付：`agent_colab_runner.py`
 
-为了避免 Agent 在 Colab 内反复发送琐碎的单步指令而遭遇通信超时，本项目提供了一体化代跑脚本 [scripts/agent_colab_runner.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/agent_colab_runner.py)。
+为了避免 Agent 在 Colab 内反复发送琐碎的单步指令而遭遇通信超时，本项目提供了一体化代跑脚本 [scripts/agent_colab_runner.py](../scripts/agent_colab_runner.py)。
 
 ### 脚本设计特性：
 1. **统一门禁检测**：集成了 `check_gpu.py`，遇到 T4（算力 7.5）自动阻断退出并销毁实例，绝不空转扣费。
@@ -127,7 +127,7 @@ python scripts/agent_colab_runner.py \
 | **1. 浏览器必须保持存活** | `colab-mcp` 依赖 Chrome 标签页作为 WebSocket 节点，不能脱离浏览器运行。 | Agent 调起浏览器后，用户保持 Chrome 窗口打开（可最小化或后台运行），不可关闭该 Colab 标签页。首次挂载 Drive 时需在网页端完成权限弹窗确认。 |
 | **2. GPU 运行时初始分配** | Colab 默认新建的空白笔记本可能是 CPU 或 T4。 | 用户首次连接时需确认一次：`代码执行程序 -> 更改运行时类型 -> L4 GPU (高内存)`。Agent 脚本会在第一时间检测算力能力，若非 L4/A100 会立即熔断并关机。 |
 | **3. 长时间去噪的超时问题** | 渲染一个批量任务需 20~40 分钟，若 MCP 单次调用 `execute_cell` 一直阻塞等待，可能会遭遇客户端网络超时。 | **推荐异步执行**：Agent 发起 `nohup python -u scripts/agent_colab_runner.py ... > /content/runner.log 2>&1 &`，随后定期读取 `tail -n 20 /content/runner.log` 汇报进度。 |
-| **4. 算力单元防闲置** | 现行口径：L4 **1.94 CU/h**，稳态约 **0.089 CU/镜**（适用条件见 ROADMAP／SOTA_PLAN；批次均摊约 0.103 CU/镜单独计）。Pro 送 100 CU/月（90天可囤至 300 CU），Ultra 送 500 CU/月；**不据此保证月产量**。 | 坚决开启 `--auto-shutdown` 与 `--watchdog-hours` 参数，双保险依赖 `runtime.unassign()` 在出片完毕或超时后关机，避免空闲继续扣费。 |
+| **4. 算力单元防闲置** | 现行口径（核对日期：2026-11-12，以 Colab 实时计费为准）：L4 历史实测 **1.94 CU/h**，稳态约 **0.089 CU/镜**（适用条件见 `docs/RESEARCH_SUMMARY.md`；批次均摊约 0.103 CU/镜单独计）。Pay-As-You-Go \$9.99/100 CU，Pro \$9.99/月(100 CU)，Pro+ \$49.99/月(600 CU)；CU 有效期 90 天；**不据此保证月产量**。 | 开启 `--auto-shutdown` 与 `--watchdog-hours` 参数，通过 `runtime.unassign()` 在出片完毕或超时后释放运行时，避免空闲继续扣费。 |
 
 ---
 
@@ -141,7 +141,7 @@ python scripts/agent_colab_runner.py \
 2. 调用 `open_colab_browser_connection` 打开并连通 Colab 实例。
 3. 注入执行单行命令：
    ```python
-   !git clone https://github.com/your-username/minimax-h3-colab-workflow.git /content/repo 2>/dev/null || (cd /content/repo && git pull)
+   !git clone https://github.com/kuhung/minimax-h3-colab-workflow.git /content/repo 2>/dev/null || (cd /content/repo && git pull)
    %cd /content/repo
    !python scripts/agent_colab_runner.py --prompts configs/prompts.example.json --auto-shutdown
    ```

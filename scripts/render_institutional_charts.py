@@ -50,8 +50,8 @@ def render_chart_01(output_path):
     add_research_chrome(
         fig,
         title="2026 主流 AI 视频生成模型多维选型矩阵与核心特性对标",
-        subtitle="围绕时序一致性、多模态参考上限、原生音画同频、物理模拟及开源推理成本横向对标",
-        source_text="数据来源：各模型官方白皮书与技术评测报告 (2026) | 视觉设计：谷粒 · KUHUNG"
+        subtitle="围绕时序一致性、多模态参考上限、原生音画同频、物理模拟及开源推理成本横向对标（核对日期：2026-11-12）",
+        source_text="数据来源：各模型官方文档与公开规格（核对日期：2026-11-12，以各官网最新说明为准） | 视觉设计：谷粒 · KUHUNG"
     )
 
     ax = fig.add_axes([0.04, 0.08, 0.92, 0.77])
@@ -118,7 +118,7 @@ def render_chart_01(output_path):
             "arch": "Apache 2.0 开源 14B DiT 架构",
             "ref": "720p 首尾帧生成 (FLF2V / VACE)",
             "audio": "纯画面生成，无内置音频扩散轨道",
-            "motion": "平滑几何形变、首尾帧 98% 匹配度",
+            "motion": "平稳镜头推移、开源 720p FLF2V / VACE 形变过渡",
             "cost": "ComfyUI 开源部署，消费级显卡可用",
             "best_for": "抽象空间转场、形态演变、开源二开实验",
             "is_focal": False
@@ -170,7 +170,19 @@ def render_chart_01(output_path):
         for label, val in fields:
             ax.text(cx + 0.012, curr_y, label, fontsize=7.8, fontweight='bold', color=NAVY if m["is_focal"] else SLATE_MID)
             curr_y -= 0.025
-            ax.text(cx + 0.012, curr_y, val, fontsize=7.2, color=SLATE_DARK, wrap=True)
+            # Wrap text cleanly by display width (~24 half-width units per line)
+            lines, buf, w = [], "", 0
+            for ch_char in val:
+                cw = 2 if ord(ch_char) > 127 else 1
+                if w + cw > 26:
+                    lines.append(buf)
+                    buf, w = ch_char, cw
+                else:
+                    buf += ch_char
+                    w += cw
+            if buf:
+                lines.append(buf)
+            ax.text(cx + 0.012, curr_y, "\n".join(lines), fontsize=7.0, color=SLATE_DARK, va='top', linespacing=1.35)
             curr_y -= 0.105
 
     fig.savefig(output_path, dpi=300, facecolor='#FFFFFF', bbox_inches='tight')
@@ -188,12 +200,12 @@ def render_chart_02(output_path):
     )
 
     # Top charts
-    ax1 = fig.add_axes([0.08, 0.46, 0.38, 0.36])
-    ax2 = fig.add_axes([0.55, 0.46, 0.38, 0.36])
+    ax1 = fig.add_axes([0.08, 0.45, 0.38, 0.34])
+    ax2 = fig.add_axes([0.55, 0.45, 0.38, 0.34])
 
     # Bottom explanation cards
-    ax_card1 = fig.add_axes([0.08, 0.11, 0.38, 0.28])
-    ax_card2 = fig.add_axes([0.55, 0.11, 0.38, 0.28])
+    ax_card1 = fig.add_axes([0.08, 0.10, 0.38, 0.27])
+    ax_card2 = fig.add_axes([0.55, 0.10, 0.38, 0.27])
 
     for ax in [ax1, ax2]:
         ax.spines['top'].set_visible(False)
@@ -206,34 +218,32 @@ def render_chart_02(output_path):
     for ax in [ax_card1, ax_card2]:
         ax.axis('off')
 
-    # --- Left Chart: CFG Mode ---
-    ax1.set_title("引导方式（CFG）对单镜头耗时与算力的影响", fontsize=10.5, fontweight='bold', color=NAVY, pad=10, loc='left')
+    # --- Left Chart: CFG Mode (Verified v1.0 vs v2.0 @ 960x544) ---
+    ax1.set_title("引导方式（CFG）对同规格实测耗时与 CU 的影响", fontsize=10.2, fontweight='bold', color=NAVY, pad=10, loc='left')
     x1 = [0, 1]
-    times = [631.2, 165.4]
+    times = [315.8, 165.4]
     ax1.bar(x1, times, color=[SLATE_LIGHT, NAVY], width=0.38, zorder=3)
     ax1.set_xticks(x1)
-    ax1.set_xticklabels(["双路 CFG (3.0)\n16 次 DiT 前向", "单路 BasicGuider (1.0)\n8 次 DiT 前向"], fontsize=8.5, color=SLATE_DARK)
+    ax1.set_xticklabels(["v1.0 双路 CFG (3.0)\n16 次 DiT 前向 (544p 实测)", "v2.0 单路 BasicGuider (1.0)\n8 次 DiT 前向 (544p 稳态)"], fontsize=8.3, color=SLATE_DARK)
     ax1.set_ylabel("生成耗时 (秒)", fontsize=8.5, color=SLATE_DARK)
-    ax1.set_ylim(0, 780)
+    ax1.set_ylim(0, 410)
 
-    ax1.text(0, 645, "631.2 秒 (~10.5 分钟)\n单片耗损 ~0.340 CU", ha='center', va='bottom', fontsize=8, fontweight='bold', color=CRIMSON)
-    ax1.text(1, 180, "165.4 秒 (~2 分 45 秒)\n稳态耗损 0.089 CU", ha='center', va='bottom', fontsize=8, fontweight='bold', color=TEAL_DARK)
+    ax1.text(0, 323, "315.8 秒 (~5.3 分钟)\n折算 ~0.170 CU (无音频)", ha='center', va='bottom', fontsize=8, fontweight='bold', color=CRIMSON)
+    ax1.text(1, 173, "165.4 秒 (~2 分 45 秒)\n稳态 ~0.089 CU (含 32kHz 音轨)", ha='center', va='bottom', fontsize=8, fontweight='bold', color=TEAL_DARK)
 
-    # --- Right Chart: Resolution & VRAM ---
-    ax2.set_title("生成分辨率对像素复杂度与峰值显存的影响", fontsize=10.5, fontweight='bold', color=NAVY, pad=10, loc='left')
-    x2 = [0, 1]
-    vram = [23.95, 21.77]
-    ax2.bar(x2, vram, color=[CRIMSON, NAVY], width=0.38, zorder=3)
+    # --- Right Chart: Verified Resolution Scaling & Smoke VRAM Headroom ---
+    ax2.set_title("分辨率切换对实测单镜耗时与 L4 显存边界的影响", fontsize=10.2, fontweight='bold', color=NAVY, pad=10, loc='left')
+    x2 = [0, 1, 2]
+    res_times = [874.7, 315.8, 165.4]
+    ax2.bar(x2, res_times, color=[CRIMSON, SLATE_LIGHT, NAVY], width=0.42, zorder=3)
     ax2.set_xticks(x2)
-    ax2.set_xticklabels(["1344×768 (768p)\n103.2 万像素 (+97.6%)", "960×544 (544p)\n52.2 万像素 (推荐规格)"], fontsize=8.5, color=SLATE_DARK)
-    ax2.set_ylabel("整卡峰值显存 (GB)", fontsize=8.5, color=SLATE_DARK)
-    ax2.set_ylim(0, 30)
+    ax2.set_xticklabels(["v1.0 1344×768\n103.2 万像素 (CFG=3.0)", "v1.0 960×544\n52.2 万像素 (CFG=3.0)", "v2.0 960×544\n52.2 万像素 (CFG=1.0)"], fontsize=8.0, color=SLATE_DARK)
+    ax2.set_ylabel("实测耗时 (秒)", fontsize=8.5, color=SLATE_DARK)
+    ax2.set_ylim(0, 1120)
 
-    ax2.axhline(22.03, color=CRIMSON, linestyle=':', linewidth=1.2, zorder=2)
-    ax2.text(0.48, 22.35, "L4 实际可用显存上限 (22.03 GB)", fontsize=7.2, color=CRIMSON, ha='center')
-
-    ax2.text(0, 24.5, "23.95 GB+ (耗时 875s)\n逼近物理极限 / 极易 OOM", ha='center', va='bottom', fontsize=8, fontweight='bold', color=CRIMSON)
-    ax2.text(1, 22.5, "21.77 GB (耗时 165s)\n安全余量 260MB / 稳态出片", ha='center', va='bottom', fontsize=8, fontweight='bold', color=TEAL_DARK)
+    ax2.text(0, 890, "874.7 秒 (~14.6 分钟)\n像素 +97.6%，单镜 ~0.471 CU", ha='center', va='bottom', fontsize=7.8, fontweight='bold', color=CRIMSON)
+    ax2.text(1, 332, "315.8 秒\n冒烟峰值 21.91/22.03 GB", ha='center', va='bottom', fontsize=7.8, fontweight='bold', color=SLATE_DARK)
+    ax2.text(2, 182, "165.4 秒 (稳态)\n~0.089 CU / 首镜冷启 243.5s", ha='center', va='bottom', fontsize=7.8, fontweight='bold', color=TEAL_DARK)
 
     # --- Bottom Left Card ---
     c1 = patches.FancyBboxPatch(
@@ -242,10 +252,10 @@ def render_chart_02(output_path):
         edgecolor=TEAL_DARK, facecolor=TEAL_BG, linewidth=1.0
     )
     ax_card1.add_patch(c1)
-    ax_card1.text(0.04, 0.82, "【CFG=1.0 单路无引导的决定性机理】", fontsize=9, fontweight='bold', color=TEAL_DARK)
-    ax_card1.text(0.04, 0.58, "• 架构机理：模型预训练已完成 CFG 蒸馏，提示词条件已内化至单次扩散场；", fontsize=8, color=SLATE_DARK)
-    ax_card1.text(0.04, 0.38, "• 算力收益：8 步采样精确执行 8 次 DiT 前向传播，算力消耗直接降低 74%；", fontsize=8, color=SLATE_DARK)
-    ax_card1.text(0.04, 0.18, "• 画质收益：消除数值极端外推引发的高饱和偏色、发焦边缘与 32kHz 音频破音。", fontsize=8, color=SLATE_DARK)
+    ax_card1.text(0.04, 0.82, "【CFG=1.0 单路无引导的工程机理】", fontsize=9, fontweight='bold', color=TEAL_DARK)
+    ax_card1.text(0.04, 0.58, "• 架构机理：Turbo 蒸馏模型已将提示词条件内化至单次扩散漂移场；", fontsize=8, color=SLATE_DARK)
+    ax_card1.text(0.04, 0.38, "• 实测收益：8 步采样精确执行 8 次 DiT 前向，较 v1.0 (315.8s) 提速 47.6%；", fontsize=8, color=SLATE_DARK)
+    ax_card1.text(0.04, 0.18, "• 音画成片：省下冗余负向引导分支后，同卡封装 32kHz 立体声 MP4。", fontsize=8, color=SLATE_DARK)
 
     # --- Bottom Right Card ---
     c2 = patches.FancyBboxPatch(
@@ -254,10 +264,10 @@ def render_chart_02(output_path):
         edgecolor=NAVY, facecolor=BG_CARD, linewidth=1.0
     )
     ax_card2.add_patch(c2)
-    ax_card2.text(0.04, 0.82, "【960×544 推荐规格的工程权衡机理】", fontsize=9, fontweight='bold', color=NAVY)
-    ax_card2.text(0.04, 0.58, "• 像素膨胀：768p 像素增加 97.6%，引发单流 DiT 全自注意力时空序列平方级激增；", fontsize=8, color=SLATE_DARK)
-    ax_card2.text(0.04, 0.38, "• 显存边界：544p 将整卡峰值稳定在 21.77 GB，留存 260MB 安全余量，避免 OOM；", fontsize=8, color=SLATE_DARK)
-    ax_card2.text(0.04, 0.18, "• 生产基准：稳态单镜热跑 165.4 秒，单片成本压入 0.089 CU，达成质感与速度平衡。", fontsize=8, color=SLATE_DARK)
+    ax_card2.text(0.04, 0.82, "【960×544 规格的实测显存与成本边界】", fontsize=9, fontweight='bold', color=NAVY)
+    ax_card2.text(0.04, 0.58, "• 像素复杂度：768p 像素增加 97.6%，实测耗时从 315.8s 升至 874.1~875.4s；", fontsize=8, color=SLATE_DARK)
+    ax_card2.text(0.04, 0.38, "• 显存实测：v1.0 544p 冒烟去噪 21.77 GB、峰值 21.91 / 22.03 GB (余量 0.12 GB)；", fontsize=8, color=SLATE_DARK)
+    ax_card2.text(0.04, 0.18, "• 生产基准：v2.0 544p 稳态 165.4s (~0.089 CU/镜，含冷启 3 镜约 0.309 CU)。", fontsize=8, color=SLATE_DARK)
 
     fig.savefig(output_path, dpi=300, facecolor='#FFFFFF', bbox_inches='tight')
     plt.close(fig)
@@ -265,7 +275,7 @@ def render_chart_02(output_path):
 
 
 if __name__ == "__main__":
-    out_dir = Path("/Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/articles/assets")
+    out_dir = Path(__file__).resolve().parent.parent / "docs" / "articles" / "assets"
     out_dir.mkdir(parents=True, exist_ok=True)
     render_chart_01(out_dir / "chart_01_model_matrix.png")
     render_chart_02(out_dir / "chart_02_params_benchmark.png")

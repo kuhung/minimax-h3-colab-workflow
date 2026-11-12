@@ -19,3 +19,6 @@ outputs/
 models/
 ComfyUI/
 drive/
+
+# Internal briefs & scratch plans
+docs/internal/

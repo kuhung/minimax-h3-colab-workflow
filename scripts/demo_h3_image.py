@@ -2,39 +2,47 @@
 """
 MiniMax-H3-Image Pure Open-Source Demo Script (T2I & Multi-Reference Editing).
 
-Supports two 100% open-source local backends (NO MiniMax commercial API calls):
-1. `comfyui` (recommended for 24GB GPUs like Colab L4 / RTX 4090 / 5090):
+Supports three 100% open-source local backends (NO MiniMax commercial API calls):
+1. `sdcpp` (DEFAULT — runs on 24GB L4 / RTX 4090 without any ComfyUI web server):
+   Pure C++/CUDA binary (`stable-diffusion.cpp` `sd-cli`) running `int8_convrot` +
+   `qwen3vl_32b_minimax_h3-Q4_K_M.gguf` + 6-step distilled Euler sampling (`cfg=1.0`).
+2. `comfyui` (for 24GB GPUs via ComfyUI API):
    Pure Python stdlib client driving ComfyUI >= 0.45.0 with Comfy-Org quantized
    weights (`int8_convrot` or `w4a8`) via `MiniMaxH3ImageConditioning` +
-   6-step distilled `KSampler` (cfg=1.0, sampler=euler, scheduler=simple).
-2. `diffusers` (official HF Modular Diffusers integration, merged in PR #15230):
+   6-step distilled `KSampler` (`cfg=1.0`, `sampler=euler`, `scheduler=simple`).
+3. `diffusers` (official HF Modular Diffusers integration, merged in PR #15230):
    Uses `ModularPipeline.from_pretrained("MiniMaxAI/MiniMax-H3-Image")` with
    `ComponentsManager` auto CPU offload (~65 GB peak VRAM at 4K BF16; A100-80G /
    H100 / H200+ recommended). Optional open-weights prompt expansion via
    `diffusers/minimax-h3-image-pe-blocks` (`MiniMaxAI/MiniMax-H3-Image-PE`).
 
 Examples:
-  # 1. Inspect ComfyUI API payload without a running server
+  # 1. Inspect resolved sdcpp command without running GPU inference (pass local paths if outside Colab)
+  python3 scripts/demo_h3_image.py --backend sdcpp --dry-run
+
+  # 2. sd.cpp Text-to-Image (Colab L4 default paths under /content/...)
+  python3 scripts/demo_h3_image.py --backend sdcpp \
+      --sd-cli /content/stable-diffusion.cpp/build/bin/sd-cli \
+      --sd-diffusion-model /content/models/diffusion_models/minimax_h3_image_pruned_int8_convrot.safetensors \
+      --sd-vae /content/models/vae/minimax_h3_image_vae_fp16.safetensors \
+      --sd-llm /content/models/text_encoders/qwen3vl_32b_minimax_h3-Q4_K_M.gguf \
+      --size 2048x2048 --output outputs/h3_image_t2i.png
+
+  # 3. Inspect ComfyUI API payload without a running server
   python3 scripts/demo_h3_image.py --backend comfyui --dry-run
 
-  # 2. ComfyUI Text-to-Image (24GB L4 / 4090 with INT8 ConvRot or W4A8)
-  python3 scripts/demo_h3_image.py --backend comfyui \
-      --comfy-url http://127.0.0.1:8188 \
-      --size 2048x2048 \
-      --output outputs/h3_image_t2i.png
-
-  # 3. ComfyUI Image Editing (<Picture 1> reference)
+  # 4. ComfyUI Image Editing (<Picture 1> reference)
   python3 scripts/demo_h3_image.py --backend comfyui \
       --image reference1.png \
       --prompt "Keep the street and buildings in <Picture 1> unchanged, replace the yellow taxi with a pastel pink vintage ice-cream truck parked at the same curb in soft golden-hour sunlight." \
       --output outputs/h3_image_edit.png
 
-  # 4. Official Diffusers Text-to-Image (80GB+ GPU, 16MP native 4:3)
+  # 5. Official Diffusers Text-to-Image (80GB+ GPU, 16MP native 4:3)
   python3 scripts/demo_h3_image.py --backend diffusers \
       --size 4736x3552 \
       --output outputs/h3_image_diffusers_t2i.png
 
-  # 5. Official Diffusers with open-source Prompt Expander (MiniMax-H3-Image-PE)
+  # 6. Official Diffusers with open-source Prompt Expander (MiniMax-H3-Image-PE)
   python3 scripts/demo_h3_image.py --backend diffusers \
       --expand-prompt \
       --prompt "A brass astrolabe resting on an oak map table in a sunlit library" \

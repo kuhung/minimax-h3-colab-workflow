@@ -685,14 +685,16 @@ def generate_benchmark_records():
             "note": "严格遵循项目宪章求真务实原则：区分已实测硬件基准与 V3 新模态理论开销推导，绝不虚构未经实测的 GPU 数据。"
         },
         "verified_l4_hardware_baseline": {
-            "gpu": "NVIDIA L4 (24GB Ada Lovelace CC 8.9)",
+            "gpu": "NVIDIA L4 24GB (Ada Lovelace CC 8.9)",
             "host_os": "Linux / Colab x86_64",
-            "cuda_version": "12.2 / cu124",
+            "cuda_version": "13.0 / cu130 (Adaptive: cu12x/fp8_scaled or cu130/int8_convrot)",
             "comfyui_architecture": "ComfyUI 2.0 (No-CFG BasicGuider, res_multistep)",
             "golden_spec": "960x544, 124 frames (17k+5) @ 24fps",
-            "verified_cold_start_seconds": 248.6,
+            "verified_cold_start_seconds": 243.5,
             "verified_steady_state_seconds": 165.4,
-            "verified_peak_vram_gb": 21.77,
+            "verified_smoke_denoising_vram_gb": 21.77,
+            "verified_smoke_peak_vram_gb": 21.91,
+            "verified_smoke_total_vram_gb": 22.03,
             "colab_rate_cu_per_hour": 1.94,
             "verified_cu_cost_per_steady_shot": 0.0891
         },
@@ -776,8 +778,8 @@ def generate_benchmark_records():
 - **硬件平台**：NVIDIA L4 24GB (Ada Lovelace CC 8.9)
 - **拓扑架构**：ComfyUI 2.0 原生单路无 CFG (`BasicGuider`, CFG=1.0)
 - **黄金规格**：960×544，124 帧 (17k+5)，24.0 fps 恒定帧率
-- **实测显存峰值**：**21.77 GB**
-- **实测冷启动耗时**：**248.6 秒**
+- **v1.0 烟测显存纪录**：去噪稳态 **21.77 GB** / 峰值 **21.91 GB**（L4 可用 **22.03 GB**，余量 0.12 GB）
+- **实测冷启动耗时**：**243.5 秒**
 - **实测稳态单镜耗时**：**165.4 秒**
 - **Colab 现行计费率**：**1.94 CU/h**
 - **实测稳态单镜成本**：**0.0891 CU / 镜** (`1.94 × 165.4 / 3600`)

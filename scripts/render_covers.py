@@ -139,10 +139,10 @@ def render_cover_02(output_path):
 
     # Badges on the left
     badges = [
-        "单路 BasicGuider (CFG=1.0) 降低 74% 算力开销",
-        "960×544 黄金规格精准锁定 21.77 GB 显存",
-        "8 步 Turbo 采样消除动态涂抹感",
-        "上海街景真实实测：稳态 165 秒 / 0.089 CU 单镜"
+        "单路 BasicGuider (CFG=1.0) 较 v1.0 544p 提速 47%",
+        "960×544 烟测峰值 21.91 GB，适配 L4 22GB 可用显存",
+        "8 步 Turbo 采样适配单路快速收敛",
+        "上海街景实测：稳态 165.4s / ~0.089 CU 单镜"
     ]
     curr_y = 0.54
     for b in badges:
@@ -163,7 +163,7 @@ def render_cover_02(output_path):
         edgecolor=SILVER, facecolor=BG_CARD, linewidth=1.2
     )
     ax.add_patch(right_box)
-    ax.text(0.55, 0.83, "ComfyUI 原生闭环基准流水线拓扑", fontsize=11, fontweight='bold', color=NAVY)
+    ax.text(0.55, 0.83, "ComfyUI 原生无扩展基准流水线拓扑", fontsize=11, fontweight='bold', color=NAVY)
 
     # 4 Pipeline Stage Nodes
     stages = [
@@ -194,7 +194,7 @@ def render_cover_02(output_path):
 
 
 if __name__ == "__main__":
-    out_dir = Path("/Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/articles/assets")
+    out_dir = Path(__file__).resolve().parent.parent / "docs" / "articles" / "assets"
     out_dir.mkdir(parents=True, exist_ok=True)
     render_cover_01(out_dir / "cover_01_selection.png")
     render_cover_02(out_dir / "cover_02_pipeline.png")

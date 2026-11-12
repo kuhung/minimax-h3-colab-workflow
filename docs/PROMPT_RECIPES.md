@@ -95,7 +95,7 @@ MiniMax 官方在 HuggingFace 仓库 `Comfy-Org/MiniMax-H3/tree/main/embeddings`
 - `Handheld macro shot with subtle camera shake`（微距手持微颤）
 - `Static locked-off shot with passing shadows`（静止固定机位，光影流动）
 
-### 3. 环境音与音效（Audio Scene）—— H3 的秘密武器
+### 3. 环境音与音效（Audio Scene）与原生音频生成
 - **核心原则**：将 H3 原生音频作为 **高端环境沉浸声（Ambient Sound FX）**。
 - **声音词汇示例**：
   - `Ambient sound of heavy rain tapping on window glass, distant rolling thunder.`

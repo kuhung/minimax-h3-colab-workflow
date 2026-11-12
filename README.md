@@ -1,46 +1,88 @@
-# MiniMax H3 Colab 纯本地视频生产工作流 (2.0 Architecture)
+# minimax-h3-colab-workflow
 
-> 基于 Google AI Pro/Ultra 赠送的 Colab 计算单元（Pro 100 CU/月，Ultra 500 CU/月，90天可囤积），全流程**本地 Colab 推理**运行 MiniMax H3（Hailuo 3.0）全模态视频模型；额度仍按 Colab 面板扣 CU，不是零成本。
-> **硬约束**：不调用任何 MiniMax 外部商业 API、不产生 API 二次计费、聚焦无脸视频（Faceless Video）高品质批量出片。
+在 Google Colab（推荐 L4 24GB）上使用开源权重运行 MiniMax H3（视频与原生立体声）及 MiniMax-H3-Image（文生图与指令修图）的工作流合集。全流程不调用 MiniMax 商业 API，直接加载 Comfy-Org 量化权重与 `stable-diffusion.cpp` 执行推理；云端运行时仍按 Google Colab 计算单元（CU）实时面板扣费。
 
----
-
-## 🚀 2.0 架构核心技术飞跃
-
-1. **单路无 CFG 架构 (`BasicGuider`, CFG=1.0)**：
-   - 彻底废除正负双路 `CLIPTextEncode` + `KSampler (cfg=3.0)` 架构。
-   - 采用 `MiniMaxH3ImageToVideo` -> `BasicGuider` -> `SamplerCustomAdvanced` 标准拓扑。
-   - **单镜推理算力直接减半（实测稳态耗时从 306s 降低至 165s，提速 46%）**，彻底消除蒸馏模型在外推 CFG 下的过曝与相位破音。
-2. **CUDA 与硬件自适应感知路由**：
-   - `int8_convrot` 算子依赖 PyTorch `cu130` 与 `comfy-kitchen`；
-   - 脚本自动检测当前环境：Colab 当前最新 L4 环境已实测升级至 PyTorch CUDA 13.0 (`cu130`)，直接激活原生 `int8_convrot` 算子；若处于 CUDA 12.x 环境，则自动无缝切换为 `fp8_scaled` (DiT) + `video_vae_fp16` (VAE)，完全释放 Ada 第四代 Tensor Core 硬件吞吐！
-3. **4-Step / 8-Step Turbo LoRA 双模式**：
-   - **8-Step**（默认，实测稳态约 165s / 约 0.089 CU/稳态镜）：成片主路径；
-   - **4-Step**（候选快筛）：耗时与成本未经本仓库同条件实测，不作承诺；阶段四再对照评估。
-4. **动态节点契约与网格对齐**：
-   - 提交前根据 `/object_info` 校验输入契约，自动安全裁剪未注册参数；
-   - 帧数向上严格自动对齐到 `17k + 5`（如 121 -> 124 帧）。
+> 计费口径提示：下文涉及的外部资费与榜单信息核对日期为 **2026-11-12**，以各官网及 Colab 实时计费面板为准；详细数据出处见 [docs/minimax-h3-facts-2026-11-12.md](docs/minimax-h3-facts-2026-11-12.md)。
 
 ---
 
-## 🏗️ 2.0 工作流全景架构图
+## 核心工程设计
 
-```mermaid
-flowchart TD
-    A["Google AI Pro/Ultra 账号 (100~500 CU/月，90天有效期)"] --> B["Colab 硬件门禁检测 (check_gpu.py)"]
-    B -->|T4 (算力 7.5)| C["❌ 立即中断并销毁实例，防扣费"]
-    B -->|L4 (24GB) 算力 8.9| D["✅ 硬件通过 (实测 1.94 CU/h)"]
-    D --> E["CUDA 自适应挂载 (cu130: int8_convrot / cu12x: fp8_scaled)"]
-    E --> F["ComfyUI 后台守护启动 (低显存卸载模式)"]
-    F --> G["/object_info 节点契约预检 (14 类核心节点)"]
-    G --> H["2.0 单路无 CFG 批处理 (BasicGuider, 8步 Turbo, 稳态 165s/镜)"]
-    H --> I["产物落盘: Google Drive (.mp4 视频 + 32kHz 原生立体声 + 日志)"]
-    I --> J["🛑 三重关机保护: finally 销毁 + Watchdog 看门狗 (杜绝闲置扣费)"]
+1. **单路无 CFG 推理（`BasicGuider`, `CFG=1.0`）**
+   - 针对已完成 CFG 蒸馏的 Pruned 模型与 Turbo LoRA，取消正负双路 `CLIPTextEncode` 与 `KSampler (cfg=3.0)`，改为 `MiniMaxH3ImageToVideo` -> `BasicGuider` -> `SamplerCustomAdvanced`。
+   - 8 步采样仅执行 8 次 DiT 前向传播。在 `960×544`、124 帧（24fps）下，相比 `v1.0` 同分辨率 `CFG=3.0` 实测（`315.8s` 无声 WebP），`v2.0` 稳态耗时降至 `165.4s`（`-47.6%`），同时输出 32kHz 双声道 `.mp4`。
+2. **按 CUDA 版本适配量化权重**
+   - `int8_convrot` 内核依赖 PyTorch `cu130` 与 `comfy-kitchen`。检测到 `CUDA >= 13.0` 时选用 `int8_convrot`；处于 `CUDA 12.x` 时自动切换为 `fp8_scaled`（DiT）+ `video_vae_fp16`（VAE），适配 L4（Ada CC 8.9）原生 FP8 硬件加速。
+3. **4-Step / 8-Step Turbo LoRA 参数切换**
+   - **8-Step（默认）**：已作为生产主路径完成 L4 实测（稳态 `165.4s` / 约 `0.089 CU/镜`）。
+   - **4-Step（参数已接入）**：`download_models.py`、`agent_colab_runner.py`、`test_shanghai_mp4.py` 均支持 `--turbo-steps 4`，但尚未在 L4 上完成同条件成对实测，暂不给出耗时数字。
+4. **节点契约预检与帧数网格对齐**
+   - [scripts/batch_runner.py](scripts/batch_runner.py) 在提交工作流前拉取 `/object_info`，移除当前 ComfyUI 版本不支持的非必需字段；同时自动将帧数向上对齐至 `17k + 5`（如 `121 -> 124` 帧）。
+
+---
+
+## 运行约束与实测基准
+
+| 项目 | 仓库实测记录与约束说明 |
+|---|---|
+| **GPU 门槛** | 要求 CUDA Compute Capability >= `8.0`（如 L4 24GB `sm_89`）。T4（`7.5`）缺少量化算子支持，[scripts/check_gpu.py](scripts/check_gpu.py) 会阻断运行；CLI 传入 `--auto-shutdown`（或 `v2.0` Notebook `AUTO_SHUTDOWN = True`）时调用 `runtime.unassign()` 释放实例。 |
+| **L4 视频基准（`v2_0` 存证）** | 规格：`960×544`、124 帧、24fps、8 步 Turbo、`BasicGuider`。首镜冷启动 `243.5s`，后两镜稳态 `165.3s` / `165.5s`（均值 `165.4s`）；3 镜总计 `574.6s`，日志记录消耗 `0.309 CU`（面板基线 `1.94 CU/h`，折算稳态约 `0.089 CU/镜`、含冷启三镜均摊约 `0.103 CU/镜`）。冷启、下载、空闲与返工另计，不构成月产量保证；外部资费与实时 CU 扣费率以 Colab 官网及当前面板为准。 |
+| **显存参考（`v1_0` 烟测）** | `v1_0` 在 `960×544` 烟测下 `nvidia-smi` 记录去噪稳态显存 `21.77 GB`、峰值 `21.91 GB`（该次 L4 可用 `22.03 GB`，余量 `0.12 GB`）；切换至 `1344×768` 时耗时升至 `874.1~875.4s`，故生产基准锁定为 `960×544`。 |
+| **L4 图像基准（`v4_0` 存证）** | 使用 `stable-diffusion.cpp` (`sd-cli`)、`2048×2048`、6 步 PDD、`CFG=1.0`：文生图 `157.8s`（约 `0.085 CU`），基于 `<Picture 1>` 指令修图 `226.1s`（约 `0.122 CU`）。 |
+| **模型拉取与 Drive 缓存** | `v2.0`/`v4.0` Colab Notebook 优先从 HuggingFace 直拉到本地 NVMe 并备份/回退 Google Drive；独立脚本 [scripts/download_models.py](scripts/download_models.py) 优先检测并复用 Drive 缓存后再回退 HuggingFace 直拉。 |
+| **推荐采样配置** | 视频使用 `KSamplerSelect (res_multistep)` + `BasicScheduler (simple)` + `BasicGuider (cfg=1.0)`；图像使用 `sd-cli` `--sampling-method euler --sigmas minimax-h3-image --cfg-scale 1.0 --steps 6`。 |
+
+---
+
+## 快速开始
+
+### 方式 A：在 Google Colab 交互运行
+
+1. 打开生产笔记本：[v2.0 视频生成模板](notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb) 或 [v4.0 图像与修图模板](notebooks/v4.0_minimax_h3_image_colab_demo.ipynb)。
+2. 运行时类型选择 **GPU -> L4（高内存）**。
+3. 依次运行全部单元格并在提示时授权 Google Drive 挂载。
+4. `v2.0` 模板默认开启 `AUTO_SHUTDOWN = True`，导出 MP4 后自动调用 `runtime.unassign()`；`v4.0` 模板默认 `AUTO_SHUTDOWN = False` 以便检查生成图，使用完毕请手动释放运行时或改为 `True`。
+
+### 方式 B：通过 Colab MCP + Agent 批量执行
+
+配置与说明见 [docs/COLAB_MCP_INTEGRATION.md](docs/COLAB_MCP_INTEGRATION.md)。在 Colab 实例内可直接执行：
+
+```bash
+python scripts/agent_colab_runner.py \
+    --workflow workflows/h3_t2v_pdd8_production.json \
+    --prompts configs/story_cyber_dawn.json \
+    --output /content/drive/MyDrive/MiniMax_Outputs \
+    --auto-shutdown
+```
+
+### 方式 C：MiniMax-H3-Image 多后端脚本
+
+支持 `sdcpp`（默认）、`comfyui` 与 `diffusers`，无 GPU 时可用 `--dry-run` 预检参数与命令组装：
+
+```bash
+python3 scripts/demo_h3_image.py --backend sdcpp --dry-run
 ```
 
 ---
 
-## 🧩 2.0 节点链路拓扑 (15 节点闭环)
+## 流程与节点拓扑
+
+### 执行流程
+
+```mermaid
+flowchart TD
+    A["Colab 运行时 (Pay-As-You-Go / Pro / AI Pro/Ultra)"] --> B["硬件门禁检测 (check_gpu.py)"]
+    B -->|T4 CC 7.5| C["阻断运行 (传入 --auto-shutdown 时释放实例)"]
+    B -->|L4 24GB CC 8.9| D["硬件通过 (参考基线 1.94 CU/h)"]
+    D --> E["按 CUDA 版本挂载权重 (cu130: int8_convrot / cu12x: fp8_scaled)"]
+    E --> F["启动 ComfyUI 无头服务"]
+    F --> G["/object_info 节点契约预检与参数裁剪"]
+    G --> H["v2.0 单路无 CFG 批处理 (BasicGuider, 8-step Turbo, 稳态 165.4s/镜)"]
+    H --> I["导出产物至 Google Drive (.mp4 含 32kHz 立体声 + 日志)"]
+    I --> J["收尾释放: finally 清理 + Watchdog + --auto-shutdown"]
+```
+
+### ComfyUI 2.0 原生 15 节点拓扑
 
 ```
 [1] UNETLoader (minimax_h3_fl2va_pruned_fp8_scaled / int8_convrot)
@@ -63,65 +105,34 @@ flowchart TD
 
 ---
 
-## 📁 仓库目录结构
+## 仓库目录
 
-- 📓 [notebooks/v4_0_minimax_h3_image_colab_demo.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v4_0_minimax_h3_image_colab_demo.ipynb) — **Colab MiniMax-H3-Image 生产实测存证笔记本 (v4.0)**（免 ComfyUI，`stable-diffusion.cpp` INT8/GGUF 6步 2048x2048 文生图与指令修图完整输出存证）。
-- 📓 [notebooks/v4.0_minimax_h3_image_colab_demo.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v4.0_minimax_h3_image_colab_demo.ipynb) — **Colab MiniMax-H3-Image 干净生产模板 (v4.0)**（HF 直连 NVMe 优先、sd-cli 编译缓存秒级恢复、2小时看门狗防扣费）。
-- 📓 [notebooks/v2_0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2_0_minimax_h3_l4_production_mp4.ipynb) — **Colab 生产实测存证笔记本 (2.0)**（含 3 镜 574.6s、稳态 165s/镜、0.309 CU 消耗与音画预览完整日志存证）。
-- 📓 [notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb) — **Colab 核心生产笔记本模板 (2.0)**（单路无 CFG、自适应权重、直连下载优先 + Drive 容灾回退、看门狗熔断与 HTML5 试听）。
-- 📓 [notebooks/v2.0_test_shanghai_street_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_test_shanghai_street_mp4.ipynb) — **上海街景 10~20s 快速测试笔记本 (2.0)**。
-- 📓 [notebooks/v1_0_minimax_h3_l4_benchmark_webp.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1_0_minimax_h3_l4_benchmark_webp.ipynb) — **v1.0 基准实测存证笔记本**（含 960x544 315s 与 1344x768 875s 完整存证）。
-- 📓 [notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb) — **v1.0 基准跑通模板笔记本**（已同步统一 Drive 幂等挂载与 NVMe 直连校验机制）。
-- 📓 [notebooks/v1.5_minimax_h3_l4_legacy_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v1.5_minimax_h3_l4_legacy_mp4.ipynb) — **v1.5 超时归档笔记本**（旧版双路 CFG=3.0 排错对照）。
-- 🎨 [scripts/demo_h3_image.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/demo_h3_image.py) — **MiniMax-H3-Image 独立多后端演示脚本**（支持 `sdcpp`、`comfyui`、`diffusers`，原生 16MP 直出与多图编辑）。
-- 🤖 [scripts/agent_colab_runner.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/agent_colab_runner.py) — **Agent 自动化托管执行器**（支持三重防扣费兜底、自适应权重、看门狗熔断）。
-- ⚙️ [scripts/check_gpu.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/check_gpu.py) — **硬件环境门禁脚本**（严格校验计算能力 ≥ 8.0、显存与磁盘；支持不达标立即销毁）。
-- 📦 [scripts/download_models.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/download_models.py) — **权重自适应校验与高速拉取**（直连下载优先、`--variant` / `--turbo-steps`、精确字节校验、safetensors 头部边界校验）。
-- 🎬 [scripts/batch_runner.py](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/scripts/batch_runner.py) — **无头批量队列渲染器 (2.0)**（`BasicGuider` 拓扑、`format_h3_prompt` 多镜头组装、`align_frame_count` 17k+5 帧数对齐、`/object_info` 契约校验）。
-- 🧩 [workflows/h3_t2v_pdd8_production.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/workflows/h3_t2v_pdd8_production.json) — 2.0 标准 960x544 8步无 CFG MP4 工作流。
-- 🧩 [workflows/h3_t2v_pdd8_webp.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/workflows/h3_t2v_pdd8_webp.json) — 2.0 WebP 快速工作流。
-- 📋 [configs/prompts.example.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/prompts.example.json) — 任务排期模板（已对齐 124 帧）。
-- 📋 [configs/story_cyber_dawn.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/story_cyber_dawn.json) — 短视频分镜剧本案例（《极客破晓：硅基脉动》，8 镜头成片流水线）。
-- 📋 [configs/shanghai_street.json](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/configs/shanghai_street.json) — 上海街景 3 镜案例。
-- 🗺️ [docs/ROADMAP.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/ROADMAP.md) — **研发路线图**（从基准闭环到垂直领域 SOTA 交付的演进计划）。
-- 📚 [docs/articles/plan.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/articles/plan.md) — **SOTA 系列实战指南规划**（高屋建瓴的技术选型、基准决策影响、全模态控制流打通与垂直 SOTA 交付流水线）。
-- 📑 [docs/REFERENCES.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/REFERENCES.md) — **开源借鉴清单与技术吸收明细**（吸收 Turbo LoRA、多图路由、表单输入抽象与官方节点标准）。
-- 📖 [docs/COLAB_MCP_INTEGRATION.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/COLAB_MCP_INTEGRATION.md) — Colab MCP 深度集成与 Agent 全自动化托管操作手册。
-- 📖 [docs/PROMPT_RECIPES.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/PROMPT_RECIPES.md) — 官方原生结构化多镜头语法与 10 大风格 Embedding 指南。
-- 📚 [docs/RESEARCH_SUMMARY.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/RESEARCH_SUMMARY.md) — 全网五大方案横评与 2.0 核心性能避坑指南。
+### Notebooks（见 [notebooks/README.md](notebooks/README.md)）
+- [v2_0_minimax_h3_l4_production_mp4.ipynb](notebooks/v2_0_minimax_h3_l4_production_mp4.ipynb) — 视频生产实测存证版（含 3 镜 `574.6s`、稳态 `165.4s/镜`、`0.309 CU` 消耗与预览日志）。
+- [v2.0_minimax_h3_l4_production_mp4.ipynb](notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb) — 视频生产干净模板（单路无 CFG、自适应权重、默认 `AUTO_SHUTDOWN = True`）。
+- [v2.0_test_shanghai_street_mp4.ipynb](notebooks/v2.0_test_shanghai_street_mp4.ipynb) — 上海街景 3 镜测试模板。
+- [v4_0_minimax_h3_image_colab_demo.ipynb](notebooks/v4_0_minimax_h3_image_colab_demo.ipynb) — MiniMax-H3-Image 实测存证版（免 ComfyUI，`sd-cli` 6 步 `2048×2048` 文生图与修图完整输出）。
+- [v4.0_minimax_h3_image_colab_demo.ipynb](notebooks/v4.0_minimax_h3_image_colab_demo.ipynb) — MiniMax-H3-Image 干净模板（HF 直连 NVMe、sd-cli 编译缓存恢复、2 小时看门狗）。
+- [v1_0_minimax_h3_l4_benchmark_webp.ipynb](notebooks/v1_0_minimax_h3_l4_benchmark_webp.ipynb) / [v1.0_minimax_h3_l4_benchmark_webp.ipynb](notebooks/v1.0_minimax_h3_l4_benchmark_webp.ipynb) — `v1.0` WebP 基准存证与模板（`960×544` 与 `1344×768` 对照）。
+- [v1.5_minimax_h3_l4_legacy_mp4.ipynb](notebooks/v1.5_minimax_h3_l4_legacy_mp4.ipynb) — 历史双路 `CFG=3.0` 模板对照（未保留云端运行输出）。
 
----
+### 核心脚本
+- [scripts/agent_colab_runner.py](scripts/agent_colab_runner.py) — Colab Agent 一体化执行入口（环境检卡、权重拉取、批渲染、`--auto-shutdown` 释放实例）。
+- [scripts/check_gpu.py](scripts/check_gpu.py) — GPU 算力（`>= 8.0`）、显存与磁盘预检。
+- [scripts/download_models.py](scripts/download_models.py) — 权重下载与校验（支持 `--variant` / `--turbo-steps`，CLI 模式先检查 Drive 缓存再回退 HuggingFace，校对精确字节与 safetensors 头部）。
+- [scripts/batch_runner.py](scripts/batch_runner.py) — 无头批处理渲染器（`BasicGuider`、`format_h3_prompt`、`align_frame_count` 与 `/object_info` 校验）。
+- [scripts/demo_h3_image.py](scripts/demo_h3_image.py) — MiniMax-H3-Image 独立多后端调度脚本（`sdcpp` / `comfyui` / `diffusers`）。
 
-## ⚡ 核心避坑法则与 2.0 实测基准
+### 工作流与配置模板
+- [workflows/h3_t2v_pdd8_production.json](workflows/h3_t2v_pdd8_production.json) / [workflows/h3_t2v_pdd8_webp.json](workflows/h3_t2v_pdd8_webp.json) — `v2.0` 8 步无 CFG 工作流（MP4 与 WebP）。
+- [configs/prompts.example.json](configs/prompts.example.json)、[configs/shanghai_street.json](configs/shanghai_street.json)、[configs/story_cyber_dawn.json](configs/story_cyber_dawn.json) — T2VA 排期与分镜脚本示例。
+- [configs/templates/](configs/templates/) — V3 多模态模板（`I2V` / `FLF2V` / `Ref2VA`）；其引用的 `outputs/showcase/` 示例素材被 `.gitignore` 忽略，使用前可先运行 `python3 scripts/generate_showcase_assets.py` 在本地生成预览基准素材。
 
-| 规则 | 2.0 实测数据与规范说明 |
-|---|---|
-| **1. 算力费率与实测生产成本** | **现行口径（仓库 L4 历史记录，非当前实例固定费率）**：1.94 CU/h；稳态约 **0.089 CU/镜**（960×544、124 帧、24fps、Turbo 8 步、BasicGuider；冷启 243.5s、稳态 165.4s）。三镜记录 574.6s、**0.309 CU**（按费率折算约 0.310 CU，显示精度/计时边界待复核）。三镜批次均摊约 **0.103 CU/镜**（含首镜开销，不能替代稳态口径）。启动/下载/空闲/失败/返工另计会话账单。**不构成月产量保证**；费率以当时 Colab 面板为准。旧文 0.087 CU 为历史口径，已停用。 |
-| **2. 严禁在 T4 上跑** | T4 算力 7.5，不支持量化算子加速，强行跑会立即 OOM 崩溃。门禁脚本自动阻断并调用 `runtime.unassign()` 关机。 |
-| **3. CUDA 12.x 自动用 fp8_scaled** | 在 Colab 默认 CUDA 12.x 环境下，`download_models.py` 与 Notebooks 自动选用 `fp8_scaled` + `video_vae_fp16`，消除 `int8_convrot` 缺少 cu130 算子导致的慢路径回退。 |
-| **4. BasicGuider 单路无 CFG** | 严禁使用 `KSampler (cfg=3.0)`，必须用 `BasicGuider`（CFG=1.0）。防止蒸馏模型伪影与双倍时间浪费。 |
-| **5. 采样器首选 res_multistep** | `KSamplerSelect (res_multistep)` + `BasicScheduler (simple)` 在极少步数下提供高阶微分修正，微观动态平滑连贯。 |
-| **6. 直连下载优先 + Drive 容灾回退** | 首选直连 HuggingFace 高速拉取到本地 NVMe（避免 Google Drive FUSE 网络挂载导致几十 MB/s 的读取阻塞与显存饥饿）；仅当 HuggingFace 网络不通时自动触发 Google Drive 容灾回退，同步原子备份。 |
-
----
-
-## 🤖 方案 A：Colab MCP + Agent 自动化托管模式（强烈推荐）
-
-详见 [docs/COLAB_MCP_INTEGRATION.md](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/docs/COLAB_MCP_INTEGRATION.md)。
-
-```bash
-python scripts/agent_colab_runner.py \
-    --workflow workflows/h3_t2v_pdd8_production.json \
-    --prompts configs/story_cyber_dawn.json \
-    --output /content/drive/MyDrive/MiniMax_Outputs \
-    --auto-shutdown
-```
-
----
-
-## 🛠️ 方案 B：传统交互 Notebook 运行 SOP
-
-1. 上传或在 Google Colab 中打开 [v2.0_minimax_h3_l4_production_mp4.ipynb](file:///Users/kuhung/roy/3_Active_Labs/minimax-h3-colab-workflow/notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb)。
-2. 更改运行时类型：**GPU -> L4 (高内存)**。
-3. 点击「代码执行程序」->「全部运行」。
-4. 步骤 2 授权 Google Drive 挂载即可，运行完毕自动导出 MP4 并安全关机。
+### 文档与实战文章
+- [docs/minimax-h3-facts-2026-11-12.md](docs/minimax-h3-facts-2026-11-12.md) — 外部资费、榜单与仓库实测台账。
+- [docs/RESEARCH_SUMMARY.md](docs/RESEARCH_SUMMARY.md) — 开源方案对比与 `v2.0` 实测分析。
+- [docs/COLAB_MCP_INTEGRATION.md](docs/COLAB_MCP_INTEGRATION.md) — `googlecolab/colab-mcp` 接入与配置说明。
+- [docs/PROMPT_RECIPES.md](docs/PROMPT_RECIPES.md) — 结构化多镜头与环境音提示词示例。
+- [docs/REFERENCES.md](docs/REFERENCES.md) — 开源生态项目借鉴与落地记录。
+- [docs/ROADMAP.md](docs/ROADMAP.md) — 工程演进计划。
+- 实战文章：[篇一：技术选型与原理](docs/articles/01-introduction-and-principles.md) ｜ [篇二：时间线提示词与工作流落地](docs/articles/02-timeline-prompting.md) ｜ [篇三：MiniMax-H3-Image 与 sd.cpp 直出](docs/articles/03-minimax-h3-image-deepdive-and-colab.md)
