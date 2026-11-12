@@ -45,7 +45,7 @@
 
 ## 5. Repository Verified Execution Baselines (Direct Colab Notebook Logs)
 
-Only the 3 executed notebooks below have recorded Colab output logs in this repository (`v1.0`, `v1.5`, `v2.0`, `v2.0_test`, `v3.1`, `v3.2`, `v3.3`, `v4.0` template files remain unexecuted blueprints with 0 cell outputs):
+The 3 original executed notebooks below have recorded Colab output logs; V3 execution records are listed in the added V3 section (`v1.0`, `v1.5`, `v2.0`, `v2.0_test`, `v4.0` template files remain unexecuted blueprints with 0 cell outputs):
 
 - **`notebooks/v1_0_minimax_h3_l4_benchmark_webp.ipynb`** (NVIDIA L4 `22.03 GB` VRAM):
   - **Cell 12 Smoke Test** (`960×544`, `CFG=3.0`): `393.78s`; denoising steady VRAM `21.77 GB`, peak VRAM `21.91 GB` (`0.12 GB` headroom).
@@ -63,3 +63,22 @@ Only the 3 executed notebooks below have recorded Colab output logs in this repo
   - **Weights**: `minimax_h3_image_pruned_int8_convrot.safetensors` (`19.54 GB`), `vae_fp16` (`1.09 GB`), `qwen3vl_32b_minimax_h3-Q4_K_M.gguf` (`16.97 GB`).
   - **Demo 1 (Text-to-Image, `2048×2048`, `6 steps`, `CFG=1.0`)**: **`157.8s`** total (`generate_image 149.09s`, `vae decode 8.27s`, `~0.085 CU` @ `1.94 CU/h`).
   - **Demo 2 (Instruction Image Edit, `2048×2048`, `<Picture 1>`)**: **`226.1s`** total (`generate_image 217.53s`, `vae decode 9.93s`, `~0.122 CU` @ `1.94 CU/h`).
+
+
+## V3 多模态 L4 实测记录（2026-11-12）
+
+三种模式均已保留执行输出与内嵌 MP4。配置为 NVIDIA L4（设备总显存 22.49 GB）、INT8 ConvRot、960×544、124 帧、24fps、BasicGuider。每种模式仅记录一次首镜运行；以下耗时从提交任务后开始计时，包含首镜加载及推理，不代表稳态性能。
+
+| 模式 | Turbo 步数 | 首镜任务耗时 | 推算 CU | 五个权重加载阶段耗时 |
+|---|---:|---:|---:|---:|
+| I2V | 8 | 258.1 秒 | 0.1391 | 122 秒 |
+| FLF2V | 8 | 273.2 秒 | 0.1472 | 122 秒 |
+| Ref2VA | 4 | 369.2 秒 | 0.1990 | 118 秒 |
+
+CU 按历史费率 1.94 CU/h × 任务秒数 / 3600 推算，并非本次面板实扣；不包含安装、下载、启动服务和空闲。权重阶段耗时来自日志时间戳，包含校验，为单次网络环境观察。22.49 GB 是设备容量，未采集本次峰值显存。Ref2VA 使用橙色小车横向行驶素材，生成结果有可见位移；尚未通过对照实验隔离提示词和参考视频各自作用。I2V / FLF2V 的完成日志与 MP4 存证证明链路执行完成，效果质量另行验收。
+
+执行存证：
+
+- [I2V](../notebooks/v3_1_minimax_h3_i2v.ipynb)
+- [FLF2V](../notebooks/v3_2_minimax_h3_flf2v.ipynb)
+- [Ref2VA](../notebooks/v3_3_minimax_h3_ref2va.ipynb)
