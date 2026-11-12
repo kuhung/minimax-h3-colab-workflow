@@ -24,7 +24,7 @@
 - **MiniMax H3 (Video)**:
   - Supported workflows in ComfyUI: Text-to-Video (T2V), Image-to-Video (I2V), Reference-to-Video (R2V) with native stereo audio generation (`AudioVAE`).
   - Open weights target ~`768px` short-edge resolution at `24 fps`, up to ~`15s` duration locally.
-  - **Licensing**: Open weights permit non-commercial / local research workflows; a **commercial license** is required for commercial use of local open weights (refer to official MiniMax license terms).
+  - **Licensing** (`MiniMax H3 Community License Agreement`, Aug 2, 2026, <https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE>): Worldwide excluding Excluded Territories (EU, UK, South Korea, USA). Royalty-free commercial use is permitted within the Applicable Territory if yearly revenue from commercial products/services does not exceed **$20M USD** and `MiniMax H3` is prominently displayed on the commercial UI; separate prior written authorization (`api@minimax.io`) is required above **$20M USD** or for Excluded Territories. Prohibits using weights/outputs to improve other AI models (except MiniMax H3 derivatives) and forbids resale/unrestricted redistribution.
 - **MiniMax-H3-Image**:
   - Single unified model for native high-resolution Text-to-Image (up to ~`16 MP`, e.g., `4096×4096`, `5024×3360`, `5472×3072`) and multi-reference instruction editing (`In-Context Edit`).
 

@@ -135,4 +135,4 @@ flowchart TD
 - [docs/PROMPT_RECIPES.md](docs/PROMPT_RECIPES.md) — 结构化多镜头与环境音提示词示例。
 - [docs/REFERENCES.md](docs/REFERENCES.md) — 开源生态项目借鉴与落地记录。
 - [docs/ROADMAP.md](docs/ROADMAP.md) — 工程演进计划。
-- 实战文章：[篇一：技术选型与原理](docs/articles/01-introduction-and-principles.md) ｜ [篇二：时间线提示词与工作流落地](docs/articles/02-timeline-prompting.md) ｜ [篇三：MiniMax-H3-Image 与 sd.cpp 直出](docs/articles/03-minimax-h3-image-deepdive-and-colab.md)
+- 实战文章：[篇一：MiniMax H3（海螺 3.0），开源视频生成模型，技术定位与选型对比](docs/articles/01-introduction-and-principles.md) ｜ [篇二：基准工作流与关键参数影响](docs/articles/02-timeline-prompting.md) ｜ [篇三：MiniMax-H3-Image 与 sd.cpp 直出](docs/articles/03-minimax-h3-image-deepdive-and-colab.md)
