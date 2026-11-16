@@ -54,6 +54,12 @@
       "pattern": "破局|极速实战|深度拆解|搜塔",
       "level": "warn",
       "hint": "标题与小节用搜得到的直白名词，不使用营销夸张词或生造音译词"
+    },
+    {
+      "id": "audit-translation-jargon",
+      "pattern": "(?<!冒)烟测|预演|脱敏|分支未验证|同条件性能数据|不构成.{0,8}保证|execution provenance|procedural previs|sanitized",
+      "level": "warn",
+      "hint": "去掉内部审计黑话和英文直译腔，用面向创作者的直白中文或自然英文"
     }
   ]
 }

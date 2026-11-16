@@ -2,7 +2,7 @@
 title: "流程落地：我们跑通的基准工作流，与关键参数的决定性影响"
 description: "基于 Google Colab L4 24 GB 单卡实测 MiniMax H3（海螺 3.0）视频工作流：拆解 BasicGuider 单路无 CFG（1.0）、960×544 分辨率与 8 步 Turbo 采样对显存（21.77 GB 稳态）和耗时（165.4 秒/镜）的影响。"
 date: 2026-11-12
-updatedAt: 2026-11-12
+updatedAt: 2026-11-16
 author: "kuhung"
 tags:
   - MiniMax H3
@@ -126,9 +126,11 @@ $$1.94 \times \frac{165.4}{3600} \approx 0.089\ \text{CU}$$
 
 ## 项目开源仓库
 
-本文对应的 Colab L4 生产模板、ComfyUI 工作流与实测日志均已开源：
+本文对应的 Colab L4 生产模板、ComfyUI 工作流与实测日志均已开源。打开 `v2.0` 模板替换提示词并保持 `960×544`、124 帧与 8 步参数，即可直接复现本文基线：
 
 - GitHub 仓库：[https://github.com/kuhung/minimax-h3-colab-workflow](https://github.com/kuhung/minimax-h3-colab-workflow)
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kuhung/minimax-h3-colab-workflow/blob/main/notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb)
 
 ## 原文对照与参考文献
 

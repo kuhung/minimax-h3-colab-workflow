@@ -2,7 +2,7 @@
 title: "图像与指令编辑：MiniMax-H3-Image 纯开源架构拆解与 Colab sd.cpp 实战"
 description: "实测 MiniMax-H3-Image 在 Google Colab L4 24 GB 单卡免 ComfyUI 跑通流程：基于 stable-diffusion.cpp（sd-cli）跑 6 步 PDD 与 CFG=1.0，2048×2048 文生图实测 157.8 秒、基于 <Picture 1> 指令修图实测 226.1 秒。"
 date: 2026-11-12
-updatedAt: 2026-11-12
+updatedAt: 2026-11-16
 author: "kuhung"
 tags:
   - MiniMax-H3-Image
@@ -70,8 +70,8 @@ DiT 空间建模原生支持从 `1024×1024`、`2048×2048` 到 **4096×4096（1
 
 | 模式 | 核心 Prompt 写法 | 实测成图效果 |
 | :--- | :--- | :--- |
-| **Demo 1: 文生图**<br>(4MP / `2048×2048`) | `Editorial architectural photograph of a cantilevered glass tea pavilion suspended above a misty alpine canyon at blue hour. Warm amber lantern light glows through minimal cedar latticework, reflecting on a still infinity water basin...` | ![Demo 1: 文生图](assets/minimax_h3_image_t2i_2048.png) |
-| **Demo 2: 指令修图**<br>(基于 `<Picture 1>` 修改) | `Transform the architectural scene in <Picture 1> into peak autumn at golden sunrise: surround the glass tea pavilion with vibrant crimson maple foliage, warm golden sunbeams piercing through the canyon mist, preserving the exact pavilion geometry and water reflection.` | ![Demo 2: 指令修图](assets/minimax_h3_image_edit_2048.png) |
+| **Demo 1: 文生图**<br>(4MP / `2048×2048`) | `Editorial architectural photograph of a cantilevered glass tea pavilion suspended above a misty alpine canyon at blue hour. Warm amber lantern light glows through minimal cedar latticework, reflecting on a still infinity water basin...` | ![Demo 1: 文生图](assets/minimax_h3_image_t2i_2048.webp) |
+| **Demo 2: 指令修图**<br>(基于 `<Picture 1>` 修改) | `Transform the architectural scene in <Picture 1> into peak autumn at golden sunrise: surround the glass tea pavilion with vibrant crimson maple foliage, warm golden sunbeams piercing through the canyon mist, preserving the exact pavilion geometry and water reflection.` | ![Demo 2: 指令修图](assets/minimax_h3_image_edit_2048.webp) |
 
 从对比图可以看到三个变化特征：
 
@@ -159,9 +159,11 @@ python3 scripts/demo_h3_image.py \
 
 ## 项目开源仓库
 
-本文对应的 `sd.cpp` CLI 脚本、Colab L4 Notebook 与实测日志均已开源：
+本文对应的 `sd.cpp` CLI 脚本、Colab L4 Notebook 与实测日志均已开源。点击下方徽章打开 `v4.0` 模板，即可在 L4 上先生成 `2048×2048` 图像再用 `<Picture 1>` 指令修图（完成后记得释放运行时）：
 
 - GitHub 仓库：[https://github.com/kuhung/minimax-h3-colab-workflow](https://github.com/kuhung/minimax-h3-colab-workflow)
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kuhung/minimax-h3-colab-workflow/blob/main/notebooks/v4.0_minimax_h3_image_colab_demo.ipynb)
 
 ## 原文对照与参考文献
 

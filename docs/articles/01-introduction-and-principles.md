@@ -2,7 +2,7 @@
 title: "MiniMax H3（海螺 3.0），开源视频生成模型，技术定位与选型对比"
 description: "面向创作者与小团队的 MiniMax H3（海螺 3.0）实测对比：基于 2026-11-12 公开数据与 Colab L4 基准，讲清 24 GB 单卡能不能跑、商用协议门槛在哪，以及和 Wan 3.0、Seedance 2.5、可灵 3.0 怎么选。"
 date: 2026-11-12
-updatedAt: 2026-11-12
+updatedAt: 2026-11-16
 author: "kuhung"
 tags:
   - MiniMax H3
@@ -175,9 +175,11 @@ $$P(A \succ B) = \frac{1}{1 + 10^{(R_B - R_A)/400}}$$
 
 ## 项目开源仓库
 
-本文对应的 Colab L4 生产模板、ComfyUI 工作流与实测日志均已开源：
+本文对应的 Colab L4 生产模板、ComfyUI 工作流与实测日志均已开源，点击徽章可直接用 `v2.0` 模板在 Colab L4 上运行 `960×544` 有声视频：
 
 - GitHub 仓库：[https://github.com/kuhung/minimax-h3-colab-workflow](https://github.com/kuhung/minimax-h3-colab-workflow)
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kuhung/minimax-h3-colab-workflow/blob/main/notebooks/v2.0_minimax_h3_l4_production_mp4.ipynb)
 
 ## 原文对照与参考文献
 

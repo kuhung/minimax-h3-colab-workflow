@@ -4,7 +4,7 @@
 
 ---
 
-## 一、 为什么引入 Colab MCP？（核心价值与痛点破局）
+## 一、 为什么引入 Colab MCP？（操作流程与用途）
 
 ### 1. 原有手动工作流的痛点
 在传统的 Colab 运行模式下，用户需要手动操作大量重复步骤：
@@ -134,10 +134,10 @@ python scripts/agent_colab_runner.py \
 ## 六、 典型对话剧本示例
 
 **用户**：
-> “把 `configs/prompts.example.json` 里的咖啡和机房这两个镜头渲染出来，要 768p 8步，跑完自动关机。”
+> “把 `configs/prompts.example.json` 里的咖啡、机房和打字这三个镜头渲染出来，按默认 960×544（544p）8 步，跑完自动关机。”
 
 **Agent 执行动作**：
-1. 校验本地 `configs/prompts.example.json` 配置格式。
+1. 校验本地 `configs/prompts.example.json` 配置格式（默认三镜均为 `960×544`；若要测试 768p 请改用 `configs/benchmark_768p.json`，不过旧版双路 CFG=3.0 在 768p 下单镜约 `874` 秒，新版暂无 768p 实测数据，日常建议保持默认的 544p）。
 2. 调用 `open_colab_browser_connection` 打开并连通 Colab 实例。
 3. 注入执行单行命令：
    ```python

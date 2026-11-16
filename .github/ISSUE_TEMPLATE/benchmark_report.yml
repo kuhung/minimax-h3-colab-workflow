@@ -1,0 +1,46 @@
+name: Benchmark report
+description: Share measurements with reproducible settings and evidence.
+title: "[Benchmark] "
+body:
+  - type: markdown
+    attributes:
+      value: Separate measured values from estimates. Remove tokens, account details and private Drive links.
+  - type: input
+    id: version
+    attributes:
+      label: Notebook/script and repository commit
+    validations:
+      required: true
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Runtime and hardware
+      description: Date, GPU, device VRAM capacity, Python, PyTorch/CUDA, ComfyUI or sd-cli version.
+    validations:
+      required: true
+  - type: textarea
+    id: settings
+    attributes:
+      label: Exact generation settings
+      description: Mode, workflow, weights/quantization, prompt, seed, resolution, frame count/fps, steps, sampler and CFG.
+    validations:
+      required: true
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Measurements and timing boundaries
+      description: Repeat count, cold-start and steady timings separately; include whether loading, compilation, downloads and saves are timed. Distinguish peak VRAM from capacity.
+    validations:
+      required: true
+  - type: textarea
+    id: billing
+    attributes:
+      label: Colab CU usage (optional)
+      description: State actual panel debit or estimated CU, rate and formula. Include idle time separately.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Execution logs and sample outputs (remove tokens/private links)
+      description: Attach an executed notebook, logs or public output; note visual/audio quality observations separately from runtime success.
+    validations:
+      required: true

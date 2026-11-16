@@ -132,7 +132,7 @@ finally:
     if AUTO_SHUTDOWN:
         safe_shutdown("多镜头任务结束；已完成镜头保存在 Drive")
 '''
-    cells=[v3.md('# MiniMax H3 v5.0：腕表三镜头短片\n\n依次运行。默认生成统一腕表素材；可在关键帧单元填入 v4 图片的 Drive 路径。三镜分别为全貌推进、表盘细节、拉远定格，每镜124帧，成片约15.5秒。输入为同图派生关键帧，第二、三镜使用上一镜实际尾帧接续，第三镜以全貌图约束终点；拼接采用直接剪切。此版本待 Colab 实测。'),v3.code(v3.get_cell_config('i2v',8)),v3.code(v3.CELL_DRIVE),v3.code(v3.CELL_GPU),v3.md('## 关键帧与分镜\n检查下方全貌和细节图，确认主体可用后再运行后续单元。'),v3.code(assets),v3.code('SHOTS = '+repr(shots)+'\nWORKFLOWS = '+repr(workflows)),v3.code(v3.CELL_COMFY),v3.code(v3.get_cell_models('i2v',8)),v3.code(v3.CELL_START_COMFY),v3.code(render)]
+    cells=[v3.md('# MiniMax H3 v5.0：腕表三镜头短片\n\n依次运行。默认生成统一腕表素材；可在关键帧单元填入 v4 图片的 Drive 路径。三镜分别为全貌推进、表盘细节、拉远定格，每镜124帧，成片约15.5秒。输入为同图派生关键帧，第二、三镜使用上一镜实际尾帧接续，第三镜以全貌图约束终点；拼接采用直接剪切。2026-11-12 已在 Colab L4 跑通（结果见 [v5_0 腕表分镜](v5_0_minimax_h3_watch_storyboard.ipynb)）：三镜耗时 265.4 / 183.5 / 195.2 秒，合计约 644.1 秒；成片 960×544、373 帧、15.54 秒。已跑通镜头间原生音轨交叉淡入淡出，整片统一背景音乐暂未实测。'),v3.code(v3.get_cell_config('i2v',8)),v3.code(v3.CELL_DRIVE),v3.code(v3.CELL_GPU),v3.md('## 关键帧与分镜\n检查下方全貌和细节图，确认主体可用后再运行后续单元。'),v3.code(assets),v3.code('SHOTS = '+repr(shots)+'\nWORKFLOWS = '+repr(workflows)),v3.code(v3.CELL_COMFY),v3.code(v3.get_cell_models('i2v',8)),v3.code(v3.CELL_START_COMFY),v3.code(render)]
     nb=dict(nbformat=4,nbformat_minor=0,metadata={'colab':{'name':'v5.0_minimax_h3_watch_storyboard.ipynb','gpuType':'L4'}},cells=cells)
     (ROOT/'notebooks/v5.0_minimax_h3_watch_storyboard.ipynb').write_text(json.dumps(nb,indent=2,ensure_ascii=False)+'\n')
 if __name__=='__main__':build()

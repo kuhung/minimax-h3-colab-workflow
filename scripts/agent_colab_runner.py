@@ -8,7 +8,7 @@ Orchestrates:
 3. Model Cache & Drive Symlinking (with integrity verification)
 4. Background ComfyUI Daemon Lifecycle
 5. Prompt Queue Batch Rendering & Drive Sync
-6. Triple-layer Auto-Shutdown & Watchdog (safeguards monthly 200 compute units)
+6. Triple-layer Auto-Shutdown & Watchdog (releases idle runtimes to conserve compute units)
 """
 
 import os

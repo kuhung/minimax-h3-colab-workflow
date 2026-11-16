@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a reproducible notebook or script failure.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: Remove access tokens, account details, and private Drive links before submitting logs.
+  - type: input
+    id: version
+    attributes:
+      label: Notebook/script and repository commit
+      placeholder: v3.1 template, commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: GPU, available VRAM, Python, PyTorch/CUDA and ComfyUI version; Colab or local.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps and configuration
+      description: Exact command or cell, workflow, mode, resolution, frame count, Turbo steps and weight variant.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error traceback and logs (remove tokens/private links)
+      render: text
+    validations:
+      required: true

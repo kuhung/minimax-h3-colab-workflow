@@ -20,6 +20,7 @@ import copy
 import json
 import time
 import shutil
+import subprocess
 import hashlib
 import urllib.request
 import urllib.parse
@@ -175,9 +176,22 @@ def stage_media_file(src_path: str, comfy_input_dir: Path) -> str:
     """
     p = Path(src_path)
     if not p.is_absolute():
-        p = (PROJECT_ROOT / p).resolve()
+        p = PROJECT_ROOT / p
+    p = p.resolve()
 
-    if not p.exists():
+    showcase_root = (PROJECT_ROOT / "outputs" / "showcase").resolve()
+    if not p.exists() and p.is_relative_to(showcase_root):
+        print("Generating local showcase inputs (Pillow and ffmpeg required)...")
+        try:
+            subprocess.run(
+                [sys.executable, str(PROJECT_ROOT / "scripts" / "generate_showcase_assets.py")],
+                cwd=PROJECT_ROOT, check=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            raise RuntimeError(
+                "Showcase asset generation failed; check Pillow and ffmpeg installation."
+            ) from exc
+    if not p.is_file():
         raise FileNotFoundError(f"Input media file not found: {src_path} (resolved: {p})")
 
     comfy_input_dir.mkdir(parents=True, exist_ok=True)

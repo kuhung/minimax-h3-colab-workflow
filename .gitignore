@@ -9,6 +9,7 @@ __pycache__/
 # Large media & model assets
 *.mp4
 *.webp
+!docs/articles/assets/*.webp
 *.wav
 *.safetensors
 *.bin
