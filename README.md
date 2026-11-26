@@ -131,5 +131,4 @@ python3 scripts/demo_h3_image.py --backend sdcpp --dry-run
 - **More from the author ([kuhung.me](https://kuhung.me))**:
   - **[TrakToken](https://www.traktoken.com)** — Live API pricing, context, and benchmark comparisons across 700+ AI models (useful when comparing self-hosted GPU costs vs. APIs).
   - **[Vibe Coding 101](https://vibe-coding-101.kuhung.me)** — Practical guides on shipping real apps and AI coding agent workflows from zero to production (Chinese).
-  - **[kuhung.me](https://kuhung.me)** — Engineering notes, open-source tools, and AI workflow breakdowns.
 - Code is licensed under [MIT](LICENSE). MiniMax weights and third-party components retain their own licenses—see the [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE).

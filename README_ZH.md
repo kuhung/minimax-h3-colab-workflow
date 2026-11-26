@@ -131,5 +131,4 @@ python3 scripts/demo_h3_image.py --backend sdcpp --dry-run
 - **作者更多内容与工具（[kuhung.me](https://kuhung.me)）**：
   - **[我独自 Vibe Coding](https://vibe-coding-101.kuhung.me)** — 从需求到上线的 AI 编程与 Agent 工作流实战手册。
   - **[TrakToken](https://www.traktoken.com)** — 700+ 主流大模型实时 API 价格与能力对照（对比自建算力与 API 成本）。
-  - **[个人网站 kuhung.me](https://kuhung.me)** — AI 工作流复盘、开源工具与工程笔记。
 - 本仓库代码采用 [MIT License](LICENSE)；MiniMax 模型权重及其他第三方组件保留各自许可条款，详见 [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE)。
