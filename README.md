@@ -13,7 +13,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/articles/assets/minimax_h3_v5_preview.gif" width="520" alt="MiniMax H3 v5.0 real L4 three-shot watch film render preview" />
+  <img src="docs/articles/assets/minimax_h3_v3_car_preview.gif" width="520" alt="MiniMax H3 v3.3 Ref2VA real L4 orange car motion-transfer render preview" />
 </p>
 <p align="center">
   <img src="docs/articles/assets/minimax_h3_image_t2i_2048.webp" width="256" alt="MiniMax-H3-Image 2048x2048 text-to-image output" />
@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <sub>Top: real <code>v5_0</code> L4 render (960×544, 24fps, native 32kHz stereo audio in notebook). Bottom: real <code>v4_0</code> 2048×2048 text-to-image (157.8s) and instruction edit (226.1s).</sub>
+  <sub>Top: real <code>v3_3</code> Ref2VA L4 render (960×544, 124 frames, 24fps, multimodal motion & audio reference in notebook). Bottom: real <code>v4_0</code> 2048×2048 text-to-image (157.8s) and instruction edit (226.1s).</sub>
 </p>
 
 ---
@@ -125,8 +125,11 @@ python3 scripts/demo_h3_image.py --backend sdcpp --dry-run
 
 ---
 
-## Contributing, Related Tools & License
+## Contributing, More Projects & License
 
 - Found a bug or benchmarked another GPU? Open a [Bug Report](https://github.com/kuhung/minimax-h3-colab-workflow/issues/new?template=bug_report.yml) or [GPU Benchmark Report](https://github.com/kuhung/minimax-h3-colab-workflow/issues/new?template=benchmark_report.yml).
-- Comparing self-hosted GPU costs vs. commercial model APIs? Check out [TrakToken](https://www.traktoken.com) for live pricing and benchmarks across 700+ models.
+- **More from the author ([kuhung.me](https://kuhung.me))**:
+  - **[TrakToken](https://www.traktoken.com)** — Live API pricing, context, and benchmark comparisons across 700+ AI models (useful when comparing self-hosted GPU costs vs. APIs).
+  - **[Vibe Coding 101](https://vibe-coding-101.kuhung.me)** — Practical guides on shipping real apps and AI coding agent workflows from zero to production (Chinese).
+  - **[kuhung.me](https://kuhung.me)** — Engineering notes, open-source tools, and AI workflow breakdowns.
 - Code is licensed under [MIT](LICENSE). MiniMax weights and third-party components retain their own licenses—see the [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE).

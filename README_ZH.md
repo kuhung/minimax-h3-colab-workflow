@@ -13,7 +13,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/articles/assets/minimax_h3_v5_preview.gif" width="520" alt="MiniMax H3 v5.0 L4 实测三镜头腕表成片预览" />
+  <img src="docs/articles/assets/minimax_h3_v3_car_preview.gif" width="520" alt="MiniMax H3 v3.3 Ref2VA L4 实测橙色小车运镜迁移成片预览" />
 </p>
 <p align="center">
   <img src="docs/articles/assets/minimax_h3_image_t2i_2048.webp" width="256" alt="MiniMax-H3-Image 2048×2048 文生图实测" />
@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <sub>上图：<code>v5_0</code> L4 实测三镜头成片（960×544、24fps，原生 32kHz 立体声见已运行 Notebook）。下图：<code>v4_0</code> 2048×2048 文生图（157.8s）与指令修图（226.1s）实测。</sub>
+  <sub>上图：<code>v3_3</code> Ref2VA L4 实测小车全模态参考成片（960×544、124 帧、24fps，含音画双轨见已运行 Notebook）。下图：<code>v4_0</code> 2048×2048 文生图（157.8s）与指令修图（226.1s）实测。</sub>
 </p>
 
 ---
@@ -125,8 +125,11 @@ python3 scripts/demo_h3_image.py --backend sdcpp --dry-run
 
 ---
 
-## 参与、延伸工具与许可证
+## 参与、作者其他项目与许可证
 
 - 遇到报错或有其他显卡实测数据，欢迎提 [问题反馈](https://github.com/kuhung/minimax-h3-colab-workflow/issues/new?template=bug_report.yml) 或 [显卡实测报告](https://github.com/kuhung/minimax-h3-colab-workflow/issues/new?template=benchmark_report.yml)。
-- 想对比自建算力与 700+ 主流模型商业 API 的实时价格与性能？可查看 [TrakToken](https://www.traktoken.com)。
+- **作者更多内容与工具（[kuhung.me](https://kuhung.me)）**：
+  - **[我独自 Vibe Coding](https://vibe-coding-101.kuhung.me)** — 从需求到上线的 AI 编程与 Agent 工作流实战手册。
+  - **[TrakToken](https://www.traktoken.com)** — 700+ 主流大模型实时 API 价格与能力对照（对比自建算力与 API 成本）。
+  - **[个人网站 kuhung.me](https://kuhung.me)** — AI 工作流复盘、开源工具与工程笔记。
 - 本仓库代码采用 [MIT License](LICENSE)；MiniMax 模型权重及其他第三方组件保留各自许可条款，详见 [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE)。
