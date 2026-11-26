@@ -74,7 +74,7 @@ flowchart TD
   - 讲透 8 步 Turbo 对消除动态涂抹（Motion Smear）的平衡；
   - 结合上海街景实测三镜头（生煎早市、梧桐落叶、雨夜外滩），展示扎实成片效果。
 - [x] **视觉化 README 重构与双语支持**：
-  - 交付成图演示、有效 Open in Colab 徽章、实测成本对照表、双语文档（`README.md` 与 `README_EN.md`）；
+  - 交付成图演示、有效 Open in Colab 徽章、实测成本对照表、双语文档（`README.md` 与 `README_ZH.md`）；
   - 统一全仓库能力声明与数据口径。
 - [ ] **核心渠道发布准备与 Issues 规范**：
   - [ ] 整理 V2EX、X、即刻、Reddit 的技术分享文案；
