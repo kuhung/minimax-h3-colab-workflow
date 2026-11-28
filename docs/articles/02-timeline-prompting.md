@@ -2,7 +2,7 @@
 title: "流程落地：我们跑通的基准工作流，与关键参数的决定性影响"
 description: "基于 Google Colab L4 24 GB 单卡实测 MiniMax H3（海螺 3.0）视频工作流：拆解 BasicGuider 单路无 CFG（1.0）、960×544 分辨率与 8 步 Turbo 采样对显存（21.77 GB 稳态）和耗时（165.4 秒/镜）的影响。"
 date: 2026-11-12
-updatedAt: 2026-11-16
+updatedAt: 2026-11-28
 author: "kuhung"
 tags:
   - MiniMax H3
@@ -95,6 +95,8 @@ $$1.94 \times \frac{165.4}{3600} \approx 0.089\ \text{CU}$$
 - **稳态热跑第二、三镜**：`165.3 秒` 与 `165.5 秒`（稳态均值 `165.4 秒`）
 - **三镜总耗时与消耗**：总计 `574.6 秒`（`9.58 分钟`），日志记录消耗 `0.309 CU`（该次面板费率 `1.90 CU/h`、原始估算 `~0.303 CU`；按校准基线 `1.94 CU/h` 折算约 `0.310 CU`，含冷启三镜均摊约 `0.103 CU/镜`，稳态单镜约 `0.089 CU/镜`）
 
+把这套 `0.089–0.103 CU/镜` 的单镜消耗折算成手头的订阅额度：以 Google AI Pro 每月附带的 `200 CU` 为例，按 `1.94 CU/h` 基线可产出约 `1,938–2,244` 镜（累计 `167–193 分钟` 544p 立体声视频）；同样时长若按公开费率走商业 API，在 MiniMax H3 官方 API（`$4.80/min`）约合 `$801–$927`，在 Wan 3.0（`$12.00/min`）约合 `$2,002–$2,319`，在 Seedance 2.5（`$34.12/min`）约合 `$5,693–$6,593`。各订阅档位与 `3.5 CU/h` 偏高费率对照见[第一篇](01-introduction-and-principles.md)。
+
 ## 权重缓存与防空耗机制
 
 除生成参数外，这套流水线在外围做了两项防踩坑设计：
@@ -134,7 +136,7 @@ $$1.94 \times \frac{165.4}{3600} \approx 0.089\ \text{CU}$$
 
 ## 原文对照与参考文献
 
-*(文中 Colab 计费基线、CU 消耗折算与实测日志均核对自 2026-11-12，实际费用以 Google Colab 实时计费面板及各官网为准。)*
+*(文中 L4 实测耗时与历史面板费率核对自 2026-11-12，Google AI Pro 200 CU 额度与商业 API 等效费率核对自 2026-11-28，实际费用以 Google Colab 实时计费面板及各官网为准。)*
 
 1. [ComfyUI 官方教程：ComfyUI MiniMax H3 节点拓扑与原生工作流规范](https://docs.comfy.org/tutorials/video/minimax/minimax-h3)
 2. [Hugging Face 开源仓库：`Comfy-Org/MiniMax-H3` 剪枝模型与 Turbo LoRA 规范](https://huggingface.co/Comfy-Org/MiniMax-H3)

@@ -2,7 +2,7 @@
 
 # MiniMax H3 Colab Workflows
 
-**Run MiniMax H3 (Video + 32kHz Stereo Audio) & MiniMax-H3-Image locally on a single Google Colab L4 24GB GPU — using open weights, zero commercial API calls.**
+**Run MiniMax H3 (Video + 32kHz Stereo Audio) & MiniMax-H3-Image on a single Google Colab L4 (24GB) — ~$0.10/min of video (~167–193 min per 200 CU), 46×–330× cheaper than commercial APIs.**
 
 [English](README.md) | [中文](README_ZH.md)
 
@@ -33,7 +33,7 @@
 | **GPU Requirement** | NVIDIA L4 24GB (CUDA CC ≥ 8.0; T4 blocked) | NVIDIA L4 24GB (`stable-diffusion.cpp`) |
 | **Resolution & Output** | `960×544`, 124 frames, 24fps `.mp4` + 32kHz stereo | `2048×2048` `.png` (T2I & `<Picture 1>` edit) |
 | **Steady Runtime** | **165.4s / clip** (`-47.6%` vs. CFG=3.0 dual-pass) | **157.8s** (T2I) · **226.1s** (instruction edit) |
-| **Est. Colab Cost** | **~0.089 CU / steady clip** *(at 1.94 CU/h)* | **~0.085–0.122 CU / image** *(excl. setup/idle)* |
+| **Est. Colab Cost** | **~0.089 CU / steady clip** (~`$0.10/min` video @ `1.94 CU/h`) | **~0.085–0.122 CU / image** *(excl. setup/idle)* |
 
 ---
 
@@ -54,11 +54,30 @@ Select **Runtime → Change runtime type → L4 GPU**, then run cells in order.
 
 ---
 
+## Included Colab Quota Output vs. Commercial Video APIs
+
+**The 200 CU included in Google AI Pro ($19.99/mo) produces ~167–193 min of stereo video (~1,938–2,244 clips) on Colab L4; the same output costs $801–$6,593 on mainstream commercial APIs (46×–330× more per minute).**
+
+Calculated from the `v2_0` L4 baseline (`960×544`, `124` frames @ `24fps` = `5.17s` stereo MP4 at `1.94 CU/h`; range spans `3-shot batch avg 0.103 CU/clip` incl. cold start to `steady 0.089 CU/clip`):
+
+| Plan & Bundled CU | Video Output (`5.17s`/clip) | MiniMax H3 API (`$4.80/m`) | Wan 3.0 (`$12.00/m`) | Seedance 2.5 (`$34.12/m`) |
+|---|---|---:|---:|---:|
+| Colab Pro / PAYG (`$9.99`, `100 CU`) | `~83–97 min` (`~969–1,122` clips) | `$400 – $464` | `$1,001 – $1,159` | `$2,847 – $3,296` |
+| **Google AI Pro (`$19.99/mo`, `200 CU`)** | **`~167–193 min` (`~1,938–2,244` clips)** | **`$801 – $927`** | **`$2,002 – $2,319`** | **`$5,693 – $6,593`** |
+| Colab Pro+ (`$49.99/mo`, `600 CU`) | `~501–580 min` (`~5,813–6,732` clips) | `$2,403 – $2,782` | `$6,007 – $6,956` | `$17,080 – $19,778` |
+| Google AI Ultra 5x (`$99.99/mo`, `1,000 CU`) | `~834–966 min` (`~9,688–11,219` clips) | `$4,005 – $4,637` | `$10,011 – $11,593` | `$28,466 – $32,964` |
+| Google AI Ultra 20x (`$199.99/mo`, `2,000 CU`) | `~1,669–1,932 min` (`~19,377–22,439` clips) | `$8,009 – $9,275` | `$20,023 – $23,187` | `$56,932 – $65,927` |
+
+- **Per-minute rates & other mainstream APIs**: Steady Colab L4 costs `~$0.10/min` (`$0.12/min` incl. 3-shot cold start; `~$0.19/min` under a higher `3.5 CU/h` dynamic L4 burn rate). On the same `200 CU` volume, Kling 4.0 (`$12.60/min`) costs `$2,102–$2,435` and Google Veo 3.1 Standard w/ audio (`$24.00/min`) costs `$4,005–$4,637`.
+- **Scope & sensitivity**: Local L4 outputs quantized `960×544` open weights (`H3-Base`), while commercial APIs benchmark `720p/1080p` cloud inference; figures exclude setup, weight sync (`~0.073 CU` once per fresh VM), and idle time, and commercial APIs also bill for discarded drafts. Even at `3.5 CU/h`, `200 CU` still yields `~107 min` (`~1,244` clips), equivalent to `$514–$3,654` on the same APIs. Quotas and API rates checked `2026-11-28`; full 5-API matrix in [docs/minimax-h3-facts-2026-11-12.md](docs/minimax-h3-facts-2026-11-12.md).
+
+---
+
 ## Why This Workflow Exists
 
 - **Single-pass `CFG=1.0` sampling (`BasicGuider`)**: Cuts DiT forward passes in half for distilled Pruned + Turbo LoRA weights, dropping 544p runtime from `315.8s` to `165.4s` while adding 32kHz stereo audio.
 - **CUDA-aware quantization**: Automatically picks `int8_convrot` on CUDA ≥ 13.0 and `fp8_scaled` + `video_vae_fp16` on CUDA 12.x (native Ada FP8 on L4).
-- **Pre-flight guards**: `check_gpu.py` blocks unsupported T4 GPUs before wasting CU; `batch_runner.py` inspects ComfyUI `/object_info` to strip schema mismatches and aligns frame counts to `17k + 5`.
+- **Pre-flight guards**: `check_gpu.py` blocks T4 GPUs (CUDA CC 7.5, below the CC 8.0 quantization requirement) before wasting CU; `batch_runner.py` inspects ComfyUI `/object_info` to strip schema mismatches and aligns frame counts to `17k + 5`.
 - **Colab MCP & CLI batch automation**: Run headless multi-shot batches with Drive caching and automatic runtime teardown.
 
 ---
